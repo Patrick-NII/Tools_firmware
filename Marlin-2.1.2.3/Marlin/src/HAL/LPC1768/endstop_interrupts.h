@@ -140,7 +140,7 @@ void setup_endstop_interrupts() {
     #endif
     _ATTACH(Z4_MIN_PIN);
   #endif
-  #if HAS_Z_MIN_PROBE_PIN
+  #if USE_Z_MIN_PROBE
     #if !LPC1768_PIN_INTERRUPT_M(Z_MIN_PROBE_PIN)
       #error "Z_MIN_PROBE_PIN is not INTERRUPT-capable. Disable ENDSTOP_INTERRUPTS_FEATURE to continue."
     #endif

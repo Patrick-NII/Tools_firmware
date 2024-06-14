@@ -91,6 +91,7 @@ public:
     static void set_background_color(const uint8_t r, const uint8_t g, const uint8_t b, const uint8_t w);
     static void set_background_color(const uint8_t (&rgbw)[4]) { set_background_color(rgbw[0], rgbw[1], rgbw[2], rgbw[3]); }
     static void reset_background_color();
+    static void set_background_off();
   #endif
 
   static void begin() {
@@ -129,7 +130,7 @@ public:
   }
 
   // Accessors
-  static uint16_t pixels() { return adaneo1.numPixels() * TERN1(NEOPIXEL2_INSERIES, 2); }
+  static uint16_t pixels() { return MUL_TERN(NEOPIXEL2_INSERIES, adaneo1.numPixels(), 2); }
 
   static uint32_t pixel_color(const uint16_t n) {
     #if ENABLED(NEOPIXEL2_INSERIES)

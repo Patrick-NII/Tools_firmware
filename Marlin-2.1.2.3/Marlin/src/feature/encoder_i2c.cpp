@@ -105,10 +105,7 @@ void I2CPositionEncoder::update() {
           SERIAL_ECHOLNPGM("Current position is ", pos);
           SERIAL_ECHOLNPGM("Position in encoder ticks is ", positionInTicks);
           SERIAL_ECHOLNPGM("New zero-offset of ", zeroOffset);
-          SERIAL_ECHOPGM("New position reads as ", get_position());
-          SERIAL_CHAR('(');
-          SERIAL_DECIMAL(mm_from_count(get_position()));
-          SERIAL_ECHOLNPGM(")");
+          SERIAL_ECHOLN(F("New position reads as "), get_position(), C('('), mm_from_count(get_position()), C(')'));
         #endif
       }
     #endif
@@ -231,7 +228,7 @@ bool I2CPositionEncoder::passes_test(const bool report) {
   if (report) {
     if (H != I2CPE_MAG_SIG_GOOD) SERIAL_ECHOPGM("Warning. ");
     SERIAL_CHAR(AXIS_CHAR(encoderAxis));
-    serial_ternary(H == I2CPE_MAG_SIG_BAD, F(" axis "), F("magnetic strip "), F("encoder "));
+    serial_ternary(F(" axis "), H == I2CPE_MAG_SIG_BAD, F("magnetic strip "), F("encoder "));
     switch (H) {
       case I2CPE_MAG_SIG_GOOD:
       case I2CPE_MAG_SIG_MID:

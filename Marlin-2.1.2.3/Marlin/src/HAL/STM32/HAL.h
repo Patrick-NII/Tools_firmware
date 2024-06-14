@@ -27,6 +27,7 @@
 #include "../shared/Marduino.h"
 #include "../shared/math_32bit.h"
 #include "../shared/HAL_SPI.h"
+#include "temp_soc.h"
 #include "fastio.h"
 #include "Servo.h"
 #include "MarlinSerial.h"
@@ -111,7 +112,7 @@
   #else
     #error "LCD_SERIAL_PORT must be from 1 to 9, or -1 for Native USB."
   #endif
-  #if HAS_DGUS_LCD
+  #if ANY(HAS_DGUS_LCD, EXTENSIBLE_UI)
     #define LCD_SERIAL_TX_BUFFER_FREE() LCD_SERIAL.availableForWrite()
   #endif
 #endif

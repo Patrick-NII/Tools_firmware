@@ -128,7 +128,7 @@
  * M84  - Disable steppers until next move, or use S<seconds> to specify an idle
  *        duration after which steppers should turn off. S0 disables the timeout.
  * M85  - Set inactivity shutdown timer with parameter S<seconds>. To disable set zero (default)
- * M92  - Set planner.settings.axis_steps_per_mm for one or more axes.
+ * M92  - Set planner.settings.axis_steps_per_mm for one or more axes. (Requires EDITABLE_STEPS_PER_UNIT)
  *
  * M100 - Watch Free Memory (for debugging) (Requires M100_FREE_MEMORY_WATCHER)
  *
@@ -143,13 +143,13 @@
  *        R<temp> Wait for extruder current temp to reach target temp. ** Wait for heating or cooling. **
  *        If AUTOTEMP is enabled, S<mintemp> B<maxtemp> F<factor>. Exit autotemp by any M109 without F
  *
- * M110 - Set the current line number. (Used by host printing)
+ * M110 - Get or set the current line number. (Used by host printing)
  * M111 - Set debug flags: "M111 S<flagbits>". See flag bits defined in enum.h.
  * M112 - Full Shutdown.
  *
  * M113 - Get or set the timeout interval for Host Keepalive "busy" messages. (Requires HOST_KEEPALIVE_FEATURE)
  * M114 - Report current position.
- * M115 - Report capabilities. (Extended capabilities requires EXTENDED_CAPABILITIES_REPORT)
+ * M115 - Report capabilities. (Requires CAPABILITIES_REPORT)
  * M117 - Display a message on the controller screen. (Requires an LCD)
  * M118 - Display a message in the host console.
  *
@@ -259,6 +259,7 @@
  * M554 - Get or set IP gateway. (Requires enabled Ethernet port)
  * M569 - Enable stealthChop on an axis. (Requires at least one _DRIVER_TYPE to be TMC2130/2160/2208/2209/5130/5160)
  * M575 - Change the serial baud rate. (Requires BAUD_RATE_GCODE)
+ * M592 - Get or set nonlinear extrusion parameters. (Requires NONLINEAR_EXTRUSION)
  * M593 - Get or set input shaping parameters. (Requires INPUT_SHAPING_[XY])
  * M600 - Pause for filament change: "M600 X<pos> Y<pos> Z<raise> E<first_retract> L<later_retract>". (Requires ADVANCED_PAUSE_FEATURE)
  * M603 - Configure filament change: "M603 T<tool> U<unload_length> L<load_length>". (Requires ADVANCED_PAUSE_FEATURE)
@@ -336,8 +337,14 @@
   #include "../feature/encoder_i2c.h"
 #endif
 
-#if IS_SCARA || defined(G0_FEEDRATE)
+#if ANY(IS_SCARA, POLAR) || defined(G0_FEEDRATE)
   #define HAS_FAST_MOVES 1
+#endif
+
+#if ENABLED(MARLIN_SMALL_BUILD)
+  #define GCODE_ERR_MSG(V...) "?"
+#else
+  #define GCODE_ERR_MSG(V...) "?" V
 #endif
 
 enum AxisRelative : uint8_t {
@@ -483,6 +490,9 @@ public:
 private:
 
   friend class MarlinSettings;
+  #if ENABLED(ARC_SUPPORT)
+    friend void plan_arc(const xyze_pos_t&, const ab_float_t&, const bool, const uint8_t);
+  #endif
 
   #if ENABLED(MARLIN_DEV_MODE)
     static void D(const int16_t dcode);
@@ -708,8 +718,17 @@ private:
   #endif
 
   static void M85();
-  static void M92();
-  static void M92_report(const bool forReplay=true, const int8_t e=-1);
+
+  #if ENABLED(HOTEND_IDLE_TIMEOUT)
+    static void M86();
+    static void M86_report(const bool forReplay=true);
+    static void M87();
+  #endif
+
+  #if ENABLED(EDITABLE_STEPS_PER_UNIT)
+    static void M92();
+    static void M92_report(const bool forReplay=true, const int8_t e=-1);
+  #endif
 
   #if ENABLED(M100_FREE_MEMORY_WATCHER)
     static void M100();
@@ -717,7 +736,6 @@ private:
 
   #if ENABLED(BD_SENSOR)
     static void M102();
-    static void M102_report(const bool forReplay=true);
   #endif
 
   #if HAS_HOTEND
@@ -750,7 +768,10 @@ private:
   #endif
 
   static void M114();
-  static void M115();
+
+  #if ENABLED(CAPABILITIES_REPORT)
+    static void M115();
+  #endif
 
   #if HAS_STATUS_MESSAGE
     static void M117();
@@ -851,7 +872,7 @@ private:
   static void M205();
   static void M205_report(const bool forReplay=true);
 
-  #if HAS_M206_COMMAND
+  #if HAS_HOME_OFFSET
     static void M206();
     static void M206_report(const bool forReplay=true);
   #endif
@@ -899,7 +920,7 @@ private:
     static void M250_report(const bool forReplay=true);
   #endif
 
-  #if HAS_GCODE_M255
+  #if ENABLED(EDITABLE_DISPLAY_TIMEOUT)
     static void M255();
     static void M255_report(const bool forReplay=true);
   #endif
@@ -927,6 +948,10 @@ private:
 
   #if ENABLED(BABYSTEPPING)
     static void M290();
+    #if ENABLED(EP_BABYSTEPPING)
+      static void M293();
+      static void M294();
+    #endif
   #endif
 
   #if HAS_SOUND
@@ -1030,7 +1055,7 @@ private:
     static void M425_report(const bool forReplay=true);
   #endif
 
-  #if HAS_M206_COMMAND
+  #if HAS_HOME_OFFSET
     static void M428();
   #endif
 
@@ -1040,6 +1065,11 @@ private:
 
   #if ENABLED(CANCEL_OBJECTS)
     static void M486();
+  #endif
+
+  #if ENABLED(FT_MOTION)
+    static void M493();
+    static void M493_report(const bool forReplay=true);
   #endif
 
   static void M500();
@@ -1086,6 +1116,11 @@ private:
 
   #if ENABLED(BAUD_RATE_GCODE)
     static void M575();
+  #endif
+
+  #if ENABLED(NONLINEAR_EXTRUSION)
+    static void M592();
+    static void M592_report(const bool forReplay=true);
   #endif
 
   #if HAS_ZV_SHAPING
@@ -1199,6 +1234,10 @@ private:
     static void M928();
   #endif
 
+  #if ENABLED(OTA_FIRMWARE_UPDATE)
+    static void M936();
+  #endif
+
   #if ENABLED(MAGNETIC_PARKING_EXTRUDER)
     static void M951();
   #endif
@@ -1207,7 +1246,7 @@ private:
     static void M995();
   #endif
 
-  #if ALL(SPI_FLASH, HAS_MEDIA)
+  #if SPI_FLASH_BACKUP
     static void M993();
     static void M994();
   #endif
@@ -1233,8 +1272,12 @@ private:
     static void M1001();
   #endif
 
-  #if ENABLED(DGUS_LCD_UI_MKS)
+  #if DGUS_LCD_UI_MKS
     static void M1002();
+  #endif
+
+  #if ENABLED(ONE_CLICK_PRINT)
+    static void M1003();
   #endif
 
   #if ENABLED(UBL_MESH_WIZARD)
@@ -1254,7 +1297,7 @@ private:
     static void M710_report(const bool forReplay=true);
   #endif
 
-  static void T(const int8_t tool_index);
+  static void T(const int8_t tool_index) IF_DISABLED(HAS_TOOLCHANGE, { UNUSED(tool_index); });
 
 };
 

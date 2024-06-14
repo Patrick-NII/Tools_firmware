@@ -80,19 +80,7 @@ millis_t GcodeSuite::previous_move_ms = 0,
 #endif
 
 // Relative motion mode for each logical axis
-static constexpr xyze_bool_t ar_init = AXIS_RELATIVE_MODES;
-relative_t GcodeSuite::axis_relative = 0 LOGICAL_AXIS_GANG(
-  | (ar_init.e << REL_E),
-  | (ar_init.x << REL_X),
-  | (ar_init.y << REL_Y),
-  | (ar_init.z << REL_Z),
-  | (ar_init.i << REL_I),
-  | (ar_init.j << REL_J),
-  | (ar_init.k << REL_K),
-  | (ar_init.u << REL_U),
-  | (ar_init.v << REL_V),
-  | (ar_init.w << REL_W)
-);
+relative_t GcodeSuite::axis_relative; // Init in constructor
 
 #if ANY(HAS_AUTO_REPORTING, HOST_KEEPALIVE_FEATURE)
   bool GcodeSuite::autoreport_paused; // = false
@@ -117,8 +105,7 @@ void GcodeSuite::report_heading(const bool forReplay, FSTR_P const fstr, const b
   if (forReplay) return;
   if (fstr) {
     SERIAL_ECHO_START();
-    SERIAL_ECHOPGM("; ");
-    SERIAL_ECHOF(fstr);
+    SERIAL_ECHO(F("; "), fstr);
   }
   if (eol) { SERIAL_CHAR(':'); SERIAL_EOL(); }
 }
@@ -135,14 +122,16 @@ void GcodeSuite::say_units() {
  * Return -1 if the T parameter is out of range
  */
 int8_t GcodeSuite::get_target_extruder_from_command() {
-  if (parser.seenval('T')) {
-    const int8_t e = parser.value_byte();
-    if (e < EXTRUDERS) return e;
-    SERIAL_ECHO_START();
-    SERIAL_CHAR('M'); SERIAL_ECHO(parser.codenum);
-    SERIAL_ECHOLNPGM(" " STR_INVALID_EXTRUDER " ", e);
-    return -1;
-  }
+  #if HAS_TOOLCHANGE
+    if (parser.seenval('T')) {
+      const int8_t e = parser.value_byte();
+      if (e < EXTRUDERS) return e;
+      SERIAL_ECHO_START();
+      SERIAL_CHAR('M'); SERIAL_ECHO(parser.codenum);
+      SERIAL_ECHOLNPGM(" " STR_INVALID_EXTRUDER " ", e);
+      return -1;
+    }
+  #endif
   return active_extruder;
 }
 
@@ -674,9 +663,21 @@ void GcodeSuite::process_parsed_command(const bool no_ok/*=false*/) {
 
       case 18: case 84: M18_M84(); break;                         // M18/M84: Disable Steppers / Set Timeout
       case 85: M85(); break;                                      // M85: Set inactivity stepper shutdown timeout
-      case 92: M92(); break;                                      // M92: Set the steps-per-unit for one or more axes
+
+      #if ENABLED(HOTEND_IDLE_TIMEOUT)
+        case 86: M86(); break;                                    // M86: Set Hotend Idle Timeout
+        case 87: M87(); break;                                    // M87: Cancel Hotend Idle Timeout
+      #endif
+
+      #if ENABLED(EDITABLE_STEPS_PER_UNIT)
+        case 92: M92(); break;                                    // M92: Set the steps-per-unit for one or more axes
+      #endif
+
       case 114: M114(); break;                                    // M114: Report current position
-      case 115: M115(); break;                                    // M115: Report capabilities
+
+      #if ENABLED(CAPABILITIES_REPORT)
+        case 115: M115(); break;                                  // M115: Report capabilities
+      #endif
 
       case 117: TERN_(HAS_STATUS_MESSAGE, M117()); break;         // M117: Set LCD message text, if possible
 
@@ -722,7 +723,7 @@ void GcodeSuite::process_parsed_command(const bool no_ok/*=false*/) {
       case 204: M204(); break;                                    // M204: Set acceleration
       case 205: M205(); break;                                    // M205: Set advanced settings
 
-      #if HAS_M206_COMMAND
+      #if HAS_HOME_OFFSET
         case 206: M206(); break;                                  // M206: Set home offsets
       #endif
 
@@ -770,6 +771,10 @@ void GcodeSuite::process_parsed_command(const bool no_ok/*=false*/) {
 
       #if ENABLED(BABYSTEPPING)
         case 290: M290(); break;                                  // M290: Babystepping
+        #if ENABLED(EP_BABYSTEPPING)
+          case 293: IF_DISABLED(EMERGENCY_PARSER, M293()); break; // M293: Babystep up
+          case 294: IF_DISABLED(EMERGENCY_PARSER, M294()); break; // M294: Babystep down
+        #endif
       #endif
 
       #if HAS_SOUND
@@ -796,7 +801,7 @@ void GcodeSuite::process_parsed_command(const bool no_ok/*=false*/) {
         case 250: M250(); break;                                  // M250: Set LCD contrast
       #endif
 
-      #if HAS_GCODE_M255
+      #if ENABLED(EDITABLE_DISPLAY_TIMEOUT)
         case 255: M255(); break;                                  // M255: Set LCD Sleep/Backlight Timeout (Minutes)
       #endif
 
@@ -884,7 +889,7 @@ void GcodeSuite::process_parsed_command(const bool no_ok/*=false*/) {
         case 425: M425(); break;                                  // M425: Tune backlash compensation
       #endif
 
-      #if HAS_M206_COMMAND
+      #if HAS_HOME_OFFSET
         case 428: M428(); break;                                  // M428: Apply current_position to home_offset
       #endif
 
@@ -894,6 +899,10 @@ void GcodeSuite::process_parsed_command(const bool no_ok/*=false*/) {
 
       #if ENABLED(CANCEL_OBJECTS)
         case 486: M486(); break;                                  // M486: Identify and cancel objects
+      #endif
+
+      #if ENABLED(FT_MOTION)
+        case 493: M493(); break;                                  // M493: Fixed-Time Motion control
       #endif
 
       case 500: M500(); break;                                    // M500: Store settings in EEPROM
@@ -934,13 +943,19 @@ void GcodeSuite::process_parsed_command(const bool no_ok/*=false*/) {
         case 575: M575(); break;                                  // M575: Set serial baudrate
       #endif
 
+      #if ENABLED(NONLINEAR_EXTRUSION)
+        case 592: M592(); break;                                  // M592: Nonlinear Extrusion control
+      #endif
+
       #if HAS_ZV_SHAPING
-        case 593: M593(); break;                                  // M593: Set Input Shaping parameters
+        case 593: M593(); break;                                  // M593: Input Shaping control
       #endif
 
       #if ENABLED(ADVANCED_PAUSE_FEATURE)
         case 600: M600(); break;                                  // M600: Pause for Filament Change
-        case 603: M603(); break;                                  // M603: Configure Filament Change
+        #if ENABLED(CONFIGURE_FILAMENT_CHANGE)
+          case 603: M603(); break;                                  // M603: Configure Filament Change
+        #endif
       #endif
 
       #if HAS_DUPLICATION_MODE
@@ -1058,6 +1073,10 @@ void GcodeSuite::process_parsed_command(const bool no_ok/*=false*/) {
         case 422: M422(); break;                                  // M422: Set Z Stepper automatic alignment position using probe
       #endif
 
+      #if ENABLED(OTA_FIRMWARE_UPDATE)
+        case 936: M936(); break;                                  // M936: OTA update firmware.
+      #endif
+
       #if SPI_FLASH_BACKUP
         case 993: M993(); break;                                  // M993: Backup SPI Flash to SD
         case 994: M994(); break;                                  // M994: Load a Backup from SD to SPI Flash
@@ -1082,8 +1101,12 @@ void GcodeSuite::process_parsed_command(const bool no_ok/*=false*/) {
         case 1001: M1001(); break;                                // M1001: [INTERNAL] Handle SD completion
       #endif
 
-      #if ENABLED(DGUS_LCD_UI_MKS)
+      #if DGUS_LCD_UI_MKS
         case 1002: M1002(); break;                                // M1002: [INTERNAL] Tool-change and Relative E Move
+      #endif
+
+      #if ENABLED(ONE_CLICK_PRINT)
+        case 1003: M1003(); break;                                // M1003: [INTERNAL] Set the current dir to /
       #endif
 
       #if ENABLED(UBL_MESH_WIZARD)
@@ -1168,10 +1191,7 @@ void GcodeSuite::process_subcommands_now(FSTR_P fgcode) {
   for (;;) {
     PGM_P const delim = strchr_P(pgcode, '\n');       // Get address of next newline
     const size_t len = delim ? delim - pgcode : strlen_P(pgcode); // Get the command length
-    char cmd[len + 1];                                // Allocate a stack buffer
-    strncpy_P(cmd, pgcode, len);                      // Copy the command to the stack
-    cmd[len] = '\0';                                  // End with a nul
-    parser.parse(cmd);                                // Parse the command
+    parser.parse(MString<MAX_CMD_SIZE>().setn_P(pgcode, len));    // Parse the command
     process_parsed_command(true);                     // Process it (no "ok")
     if (!delim) break;                                // Last command?
     pgcode = delim + 1;                               // Get the next command

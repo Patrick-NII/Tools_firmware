@@ -35,10 +35,11 @@ typedef void (*selectFunc_t)();
 
 #define SS_LEFT    0x00
 #define SS_CENTER  0x01
-#define SS_INVERT  0x02
+#define SS_FULL    0x02
+#define SS_INVERT  0x04
 #define SS_DEFAULT SS_CENTER
 
-#if ENABLED(BABYSTEP_ZPROBE_OFFSET) && Z_PROBE_OFFSET_RANGE_MIN >= -9 && Z_PROBE_OFFSET_RANGE_MAX <= 9
+#if ENABLED(BABYSTEP_ZPROBE_OFFSET) && PROBE_OFFSET_ZMIN >= -9 && PROBE_OFFSET_ZMAX <= 9
   #define BABYSTEP_TO_STR(N) ftostr43sign(N)
 #elif ENABLED(BABYSTEPPING)
   #define BABYSTEP_TO_STR(N) ftostr53sign(N)
@@ -75,7 +76,7 @@ class MenuItemBase {
 // STATIC_ITEM(LABEL,...)
 class MenuItem_static : public MenuItemBase {
   public:
-    static void draw(const uint8_t row, FSTR_P const ftpl, const uint8_t style=SS_DEFAULT, const char * const vstr=nullptr);
+    static void draw(const uint8_t row, FSTR_P const ftpl, const uint8_t style=SS_DEFAULT, const char *vstr=nullptr);
 };
 
 // BACK_ITEM(LABEL)
@@ -242,21 +243,14 @@ void _lcd_draw_homing();
   #else
     void lcd_babystep_z();
   #endif
-
-  #if ENABLED(BABYSTEP_MILLIMETER_UNITS)
-    #define BABYSTEP_SIZE_X int32_t((BABYSTEP_MULTIPLICATOR_XY) * planner.settings.axis_steps_per_mm[X_AXIS])
-    #define BABYSTEP_SIZE_Y int32_t((BABYSTEP_MULTIPLICATOR_XY) * planner.settings.axis_steps_per_mm[Y_AXIS])
-    #define BABYSTEP_SIZE_Z int32_t((BABYSTEP_MULTIPLICATOR_Z)  * planner.settings.axis_steps_per_mm[Z_AXIS])
-  #else
-    #define BABYSTEP_SIZE_X BABYSTEP_MULTIPLICATOR_XY
-    #define BABYSTEP_SIZE_Y BABYSTEP_MULTIPLICATOR_XY
-    #define BABYSTEP_SIZE_Z BABYSTEP_MULTIPLICATOR_Z
-  #endif
-
 #endif
 
 #if ENABLED(TOUCH_SCREEN_CALIBRATION)
   void touch_screen_calibration();
+#endif
+
+#if ENABLED(ONE_CLICK_PRINT)
+  void one_click_print();
 #endif
 
 extern uint8_t screen_history_depth;

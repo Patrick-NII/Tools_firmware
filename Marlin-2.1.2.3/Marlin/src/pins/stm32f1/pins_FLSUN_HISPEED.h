@@ -241,8 +241,8 @@
 
 #if ENABLED(NEOPIXEL_LED)
   #define LED_PWM                           PC7   // IO1
-  #ifndef NEOPIXEL_PIN
-    #define NEOPIXEL_PIN                 LED_PWM  // USED WIFI IO0/IO1 PIN
+  #ifndef BOARD_NEOPIXEL_PIN
+    #define BOARD_NEOPIXEL_PIN           LED_PWM  // USED WIFI IO0/IO1 PIN
   #endif
 #endif
 
@@ -301,8 +301,6 @@
   #define TFT_BACKLIGHT_PIN                 PD13
 
   #define LCD_USE_DMA_FSMC                        // Use DMA transfers to send data to the TFT
-  #define FSMC_DMA_DEV                      DMA2
-  #define FSMC_DMA_CHANNEL               DMA_CH5
 
   #define FSMC_CS_PIN                       PD7   // NE4
   #define FSMC_RS_PIN                       PD11  // A0

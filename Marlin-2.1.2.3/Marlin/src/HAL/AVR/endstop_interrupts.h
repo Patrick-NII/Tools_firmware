@@ -337,7 +337,7 @@ void setup_endstop_interrupts() {
       pciSetup(Z4_MIN_PIN);
     #endif
   #endif
-  #if HAS_Z_MIN_PROBE_PIN
+  #if USE_Z_MIN_PROBE
     #if (digitalPinToInterrupt(Z_MIN_PROBE_PIN) != NOT_AN_INTERRUPT)
       _ATTACH(Z_MIN_PROBE_PIN);
     #else

@@ -33,51 +33,6 @@
 
 #define _AXIS(A) (A##_AXIS)
 
-#define _XSTOP_  0x01
-#define _YSTOP_  0x02
-#define _ZSTOP_  0x03
-#define _ISTOP_  0x04
-#define _JSTOP_  0x05
-#define _KSTOP_  0x06
-#define _USTOP_  0x07
-#define _VSTOP_  0x08
-#define _WSTOP_  0x09
-#define _XMIN_   0x11
-#define _YMIN_   0x12
-#define _ZMIN_   0x13
-#define _IMIN_   0x14
-#define _JMIN_   0x15
-#define _KMIN_   0x16
-#define _UMIN_   0x17
-#define _VMIN_   0x18
-#define _WMIN_   0x19
-#define _XMAX_   0x21
-#define _YMAX_   0x22
-#define _ZMAX_   0x23
-#define _IMAX_   0x24
-#define _JMAX_   0x25
-#define _KMAX_   0x26
-#define _UMAX_   0x27
-#define _VMAX_   0x28
-#define _WMAX_   0x29
-#define _XDIAG_  0x31
-#define _YDIAG_  0x32
-#define _ZDIAG_  0x33
-#define _IDIAG_  0x34
-#define _JDIAG_  0x35
-#define _KDIAG_  0x36
-#define _UDIAG_  0x37
-#define _VDIAG_  0x38
-#define _WDIAG_  0x39
-#define _E0DIAG_ 0xE0
-#define _E1DIAG_ 0xE1
-#define _E2DIAG_ 0xE2
-#define _E3DIAG_ 0xE3
-#define _E4DIAG_ 0xE4
-#define _E5DIAG_ 0xE5
-#define _E6DIAG_ 0xE6
-#define _E7DIAG_ 0xE7
-
 #define _FORCE_INLINE_ __attribute__((__always_inline__)) __inline__
 #define  FORCE_INLINE  __attribute__((always_inline)) inline
 #define NO_INLINE      __attribute__((noinline))
@@ -99,9 +54,6 @@
 #if !defined(CYCLES_PER_MICROSECOND) && !defined(__STM32F1__)
   #define CYCLES_PER_MICROSECOND (F_CPU / 1000000UL) // 16 or 20 on AVR
 #endif
-
-// Nanoseconds per cycle
-#define NANOSECONDS_PER_CYCLE (1000000000.0 / F_CPU)
 
 // Macros to make a string from a macro
 #define STRINGIFY_(M) #M
@@ -134,7 +86,8 @@
 #define HYPOT2(x,y) (sq(x)+sq(y))
 #define NORMSQ(x,y,z) (sq(x)+sq(y)+sq(z))
 
-#define CIRCLE_AREA(R) (float(M_PI) * sq(float(R)))
+#define FLOAT_SQ(I) sq(float(I))
+#define CIRCLE_AREA(R) (float(M_PI) * FLOAT_SQ(R))
 #define CIRCLE_CIRC(R) (2 * float(M_PI) * float(R))
 
 #define SIGN(a) ({__typeof__(a) _a = (a); (_a>0)-(_a<0);})
@@ -240,7 +193,11 @@
 #define _DIS_1(O)           NOT(_ENA_1(O))
 #define ENABLED(V...)       DO(ENA,&&,V)
 #define DISABLED(V...)      DO(DIS,&&,V)
+#define ANY(V...)          !DISABLED(V)
+#define ALL(V...)           ENABLED(V)
+#define NONE(V...)          DISABLED(V)
 #define COUNT_ENABLED(V...) DO(ENA,+,V)
+#define MANY(V...)          (COUNT_ENABLED(V) > 1)
 
 // Ternary pre-compiler macros conceal non-emitted content from the compiler
 #define TERN(O,A,B)         _TERN(_ENA_1(O),B,A)    // OPTION ? 'A' : 'B'
@@ -250,6 +207,7 @@
 #define _TERN(E,V...)       __TERN(_CAT(T_,E),V)    // Prepend 'T_' to get 'T_0' or 'T_1'
 #define __TERN(T,V...)      ___TERN(_CAT(_NO,T),V)  // Prepend '_NO' to get '_NOT_0' or '_NOT_1'
 #define ___TERN(P,V...)     THIRD(P,V)              // If first argument has a comma, A. Else B.
+#define IF_DISABLED(O,A)    TERN(O,,A)
 
 // Macros to conditionally emit array items and function arguments
 #define _OPTITEM(A...)      A,
@@ -269,16 +227,6 @@
 #define DIFF_TERN(O,B,A)    ((B) MINUS_TERN0(O,A))  // ((B) (OPTION ? '- (A)' : '<nul>'))
 #define MUL_TERN(O,B,A)     ((B) MUL_TERN1(O,A))    // ((B) (OPTION ? '* (A)' : '<nul>'))
 #define DIV_TERN(O,B,A)     ((B) DIV_TERN1(O,A))    // ((B) (OPTION ? '/ (A)' : '<nul>'))
-
-#define IF_ENABLED          TERN_
-#define IF_DISABLED(O,A)    TERN(O,,A)
-
-#define ANY(V...)          !DISABLED(V)
-#define NONE(V...)          DISABLED(V)
-#define ALL(V...)           ENABLED(V)
-#define BOTH(V1,V2)         ALL(V1,V2)
-#define EITHER(V1,V2)       ANY(V1,V2)
-#define MANY(V...)          (COUNT_ENABLED(V) > 1)
 
 // Macros to support pins/buttons exist testing
 #define PIN_EXISTS(PN)      (defined(PN##_PIN) && PN##_PIN >= 0)
@@ -803,3 +751,14 @@
 #define _HAS_E_TEMP(N) || TEMP_SENSOR(N)
 #define HAS_E_TEMP_SENSOR (0 REPEAT(EXTRUDERS, _HAS_E_TEMP))
 #define TEMP_SENSOR_IS_MAX_TC(T) (TEMP_SENSOR(T) == -5 || TEMP_SENSOR(T) == -3 || TEMP_SENSOR(T) == -2)
+
+#define _UI_NONE          0
+#define _UI_ORIGIN      101
+#define _UI_FYSETC      102
+#define _UI_HIPRECY     103
+#define _UI_MKS         104
+#define _UI_RELOADED    105
+#define _UI_IA_CREALITY 106
+#define _UI_E3S1PRO     107
+#define _DGUS_UI_IS(N) || (CAT(_UI_, DGUS_LCD_UI) == CAT(_UI_, N))
+#define DGUS_UI_IS(V...) (0 MAP(_DGUS_UI_IS, V))

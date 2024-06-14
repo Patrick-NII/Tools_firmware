@@ -78,12 +78,12 @@ const uint32_t ESP_FLASH_ADDR = 0x40200000;     // address of start of Flash
 UPLOAD_STRUCT esp_upload;
 
 static const uint16_t retriesPerReset = 3;
-static const millis_t connectAttemptInterval = 50;
+static const uint32_t connectAttemptInterval = 50;
 static const uint16_t percentToReportIncrement = 5; // how often we report % complete
-static const millis_t defaultTimeout = 500;
-static const millis_t eraseTimeout = 15000;
-static const millis_t blockWriteTimeout = 200;
-static const millis_t blockWriteInterval = 15;      // 15ms is long enough, 10ms is mostly too short
+static const uint32_t defaultTimeout = 500;
+static const uint32_t eraseTimeout = 15000;
+static const uint32_t blockWriteTimeout = 200;
+static const uint32_t blockWriteInterval = 15;      // 15ms is long enough, 10ms is mostly too short
 static MediaFile update_file, *update_curDir;
 
 // Messages corresponding to result codes, should make sense when followed by " error"
@@ -237,7 +237,7 @@ void writeByteSlip(const uint8_t b) {
  * If an error occurs, return a negative value.  Otherwise, return the number
  * of bytes in the response (or zero if the response was not the standard "two bytes of zero").
  */
-EspUploadResult readPacket(uint8_t op, uint32_t *valp, size_t *bodyLen, millis_t msTimeout) {
+EspUploadResult readPacket(uint8_t op, uint32_t *valp, size_t *bodyLen, uint32_t msTimeout) {
   typedef enum {
     begin = 0,
     header,
@@ -409,7 +409,7 @@ void sendCommand(uint8_t op, uint32_t checkVal, const uint8_t *data, size_t data
 }
 
 // Send a command to the attached device together with the supplied data, if any, and get the response
-EspUploadResult doCommand(uint8_t op, const uint8_t *data, size_t dataLen, uint32_t checkVal, uint32_t *valp, millis_t msTimeout) {
+EspUploadResult doCommand(uint8_t op, const uint8_t *data, size_t dataLen, uint32_t checkVal, uint32_t *valp, uint32_t msTimeout) {
   size_t bodyLen;
   EspUploadResult stat;
 
@@ -463,7 +463,7 @@ EspUploadResult flashBegin(uint32_t addr, uint32_t size) {
   // determine the number of blocks represented by the size
   uint32_t blkCnt;
   uint8_t buf[16];
-  millis_t timeout;
+  uint32_t timeout;
 
   blkCnt = (size + EspFlashBlockSize - 1) / EspFlashBlockSize;
 
@@ -650,12 +650,14 @@ void resetWiFiForUpload(int begin_or_end) {
   //#if 0
   uint32_t start = getWifiTick();
 
-  if (begin_or_end == 0) {
-    SET_OUTPUT(WIFI_IO0_PIN);
-    WRITE(WIFI_IO0_PIN, LOW);
-  }
-  else
-    SET_INPUT_PULLUP(WIFI_IO0_PIN);
+  #if PIN_EXISTS(WIFI_IO0)
+    if (begin_or_end == 0) {
+      SET_OUTPUT(WIFI_IO0_PIN);
+      WRITE(WIFI_IO0_PIN, LOW);
+    }
+    else
+      SET_INPUT_PULLUP(WIFI_IO0_PIN);
+  #endif
 
   WIFI_RESET();
   while (getWifiTickDiff(start, getWifiTick()) < 500) { /* nada */ }

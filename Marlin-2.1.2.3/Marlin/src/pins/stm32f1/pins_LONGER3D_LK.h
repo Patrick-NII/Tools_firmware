@@ -136,8 +136,6 @@
 //
 #if HAS_FSMC_TFT
   #define LCD_USE_DMA_FSMC                        // Use DMA transfers to send data to the TFT
-  #define FSMC_DMA_DEV                      DMA2
-  #define FSMC_DMA_CHANNEL               DMA_CH5
   #define FSMC_CS_PIN                       PD7   // FSMC_NE1
   #define FSMC_RS_PIN                       PD11  // A16 Register. Only one address needed
 
@@ -160,7 +158,8 @@
   #define LCD_BRIGHTNESS_DEFAULT TFT_BACKLIGHT_PWM
 #endif
 
-#if ENABLED(ONBOARD_SDIO)
+#if SD_CONNECTION_IS(ONBOARD)
+  #define ONBOARD_SDIO
   #define SD_SS_PIN                         -1    // else SDSS set to PA4 in M43 (spi_pins.h)
 #endif
 

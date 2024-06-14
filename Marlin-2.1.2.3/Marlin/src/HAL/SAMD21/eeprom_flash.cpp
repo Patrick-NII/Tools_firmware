@@ -37,9 +37,10 @@ static const uint8_t flashdata[TOTAL_FLASH_SIZE]  __attribute__((__aligned__(256
 
 #include "../shared/eeprom_api.h"
 
-size_t PersistentStore::capacity() { return MARLIN_EEPROM_SIZE; }
+size_t PersistentStore::capacity() { return MARLIN_EEPROM_SIZE - eeprom_exclude_size; }
 
 /*
+size_t PersistentStore::capacity() { return MARLIN_EEPROM_SIZE - eeprom_exclude_size; }
   const uint8_t psz = NVMCTRL->SEESTAT.bit.PSZ,
                 sblk = NVMCTRL->SEESTAT.bit.SBLK;
 
@@ -126,14 +127,14 @@ bool PersistentStore::write_data(int &pos, const uint8_t *value, size_t size, ui
     hasWritten = true;
   }
 
-  memcpy(buffer+pos,value,size);
+  memcpy(buffer + REAL_EEPROM_ADDR(pos), value, size);
   pos += size;
   return false;
 }
 
 bool PersistentStore::read_data(int &pos, uint8_t *value, size_t size, uint16_t *crc, const bool writing/*=true*/) {
-  volatile uint8_t *dst_addr =  (volatile uint8_t *) &flashdata;
-  dst_addr += pos;
+  volatile uint8_t *dst_addr = (volatile uint8_t *) &flashdata;
+  dst_addr += REAL_EEPROM_ADDR(pos);
 
   memcpy(value, (const void *)dst_addr, size);
   pos += size;

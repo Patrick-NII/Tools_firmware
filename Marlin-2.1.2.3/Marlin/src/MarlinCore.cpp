@@ -50,6 +50,9 @@
 #include "module/settings.h"
 #include "module/stepper.h"
 #include "module/temperature.h"
+#if ENABLED(FT_MOTION)
+  #include "module/ft_motion.h"
+#endif
 
 #include "gcode/gcode.h"
 #include "gcode/parser.h"
@@ -74,8 +77,6 @@
   #include "lcd/e3v2/common/encoder.h"
   #if ENABLED(DWIN_CREALITY_LCD)
     #include "lcd/e3v2/creality/dwin.h"
-  #elif ENABLED(DWIN_LCD_PROUI)
-    #include "lcd/e3v2/proui/dwin.h"
   #elif ENABLED(DWIN_CREALITY_LCD_JYERSUI)
     #include "lcd/e3v2/jyersui/dwin.h"
   #endif
@@ -172,6 +173,8 @@
   #include "module/polargraph.h"
 #elif IS_SCARA
   #include "module/scara.h"
+#elif ENABLED(POLAR)
+  #include "module/polar.h"
 #endif
 
 #if HAS_LEVELING
@@ -214,7 +217,9 @@
   #include "feature/fanmux.h"
 #endif
 
-#include "module/tool_change.h"
+#if HAS_TOOLCHANGE
+  #include "module/tool_change.h"
+#endif
 
 #if HAS_FANCHECK
   #include "feature/fancheck.h"
@@ -236,7 +241,7 @@
   #include "feature/password/password.h"
 #endif
 
-#if ENABLED(DGUS_LCD_UI_MKS)
+#if DGUS_LCD_UI_MKS
   #include "lcd/extui/dgus/DGUSScreenHandler.h"
 #endif
 
@@ -261,7 +266,7 @@ PGMSTR(M112_KILL_STR, "M112 Shutdown");
 MarlinState marlin_state = MF_INITIALIZING;
 
 // For M109 and M190, this flag may be cleared (by M108) to exit the wait loop
-bool wait_for_heatup = true;
+bool wait_for_heatup = false;
 
 // For M0/M1, this flag may be cleared (by M108) to exit the wait-for-user loop
 #if HAS_RESUME_CONTINUE
@@ -386,7 +391,7 @@ void startOrResumeJob() {
     if (queue.enqueue_one(F("M1001"))) {  // Keep trying until it gets queued
       marlin_state = MF_RUNNING;          // Signal to stop trying
       TERN_(PASSWORD_AFTER_SD_PRINT_END, password.lock_machine());
-      TERN_(DGUS_LCD_UI_MKS, ScreenHandler.SDPrintingFinished());
+      TERN_(DGUS_LCD_UI_MKS, screen.sdPrintingFinished());
     }
   }
 
@@ -469,11 +474,16 @@ inline void manage_inactivity(const bool no_stepper_sleep=false) {
 
   #if HAS_KILL
 
-    // Check if the kill button was pressed and wait just in case it was an accidental
-    // key kill key press
+    // Check if the kill button was pressed and wait to ensure the signal is not noise
+    // typically caused by poor insulation and grounding on LCD cables.
+    // Lower numbers here will increase response time and therefore safety rating.
+    // It is recommended to set this as low as possibe without false triggers.
     // -------------------------------------------------------------------------------
+    #ifndef KILL_DELAY
+      #define KILL_DELAY 250
+    #endif
+
     static int killCount = 0;   // make the inactivity button a bit less responsive
-    const int KILL_DELAY = 750;
     if (kill_state())
       killCount++;
     else if (killCount > 0)
@@ -664,33 +674,20 @@ inline void manage_inactivity(const bool no_stepper_sleep=false) {
 
   TERN_(HOTEND_IDLE_TIMEOUT, hotend_idle.check());
 
+  #if ANY(PSU_CONTROL, AUTO_POWER_CONTROL) && PIN_EXISTS(PS_ON_EDM)
+    if ( ELAPSED(ms, powerManager.last_state_change_ms + PS_EDM_RESPONSE)
+      && (READ(PS_ON_PIN) != READ(PS_ON_EDM_PIN) || TERN0(PSU_OFF_REDUNDANT, extDigitalRead(PS_ON1_PIN) != extDigitalRead(PS_ON1_EDM_PIN)))
+    ) kill(GET_TEXT_F(MSG_POWER_EDM_FAULT));
+  #endif
+
   #if ENABLED(EXTRUDER_RUNOUT_PREVENT)
     if (thermalManager.degHotend(active_extruder) > (EXTRUDER_RUNOUT_MINTEMP)
       && ELAPSED(ms, gcode.previous_move_ms + SEC_TO_MS(EXTRUDER_RUNOUT_SECONDS))
       && !planner.has_blocks_queued()
     ) {
-      #if ENABLED(SWITCHING_EXTRUDER)
-        bool oldstatus;
-        switch (active_extruder) {
-          default: oldstatus = stepper.AXIS_IS_ENABLED(E_AXIS, 0); stepper.ENABLE_EXTRUDER(0); break;
-          #if E_STEPPERS > 1
-            case 2: case 3: oldstatus = stepper.AXIS_IS_ENABLED(E_AXIS, 1); stepper.ENABLE_EXTRUDER(1); break;
-            #if E_STEPPERS > 2
-              case 4: case 5: oldstatus = stepper.AXIS_IS_ENABLED(E_AXIS, 2); stepper.ENABLE_EXTRUDER(2); break;
-              #if E_STEPPERS > 3
-                case 6: case 7: oldstatus = stepper.AXIS_IS_ENABLED(E_AXIS, 3); stepper.ENABLE_EXTRUDER(3); break;
-              #endif // E_STEPPERS > 3
-            #endif // E_STEPPERS > 2
-          #endif // E_STEPPERS > 1
-        }
-      #else // !SWITCHING_EXTRUDER
-        bool oldstatus;
-        switch (active_extruder) {
-          default:
-          #define _CASE_EN(N) case N: oldstatus = stepper.AXIS_IS_ENABLED(E_AXIS, N); stepper.ENABLE_EXTRUDER(N); break;
-          REPEAT(E_STEPPERS, _CASE_EN);
-        }
-      #endif
+      const int8_t e_stepper = TERN(HAS_SWITCHING_EXTRUDER, active_extruder >> 1, active_extruder);
+      const bool e_off = !stepper.AXIS_IS_ENABLED(E_AXIS, e_stepper);
+      if (e_off) stepper.ENABLE_EXTRUDER(e_stepper);
 
       const float olde = current_position.e;
       current_position.e += EXTRUDER_RUNOUT_EXTRUDE;
@@ -699,22 +696,7 @@ inline void manage_inactivity(const bool no_stepper_sleep=false) {
       planner.set_e_position_mm(olde);
       planner.synchronize();
 
-      #if ENABLED(SWITCHING_EXTRUDER)
-        switch (active_extruder) {
-          default: if (oldstatus) stepper.ENABLE_EXTRUDER(0); else stepper.DISABLE_EXTRUDER(0); break;
-          #if E_STEPPERS > 1
-            case 2: case 3: if (oldstatus) stepper.ENABLE_EXTRUDER(1); else stepper.DISABLE_EXTRUDER(1); break;
-            #if E_STEPPERS > 2
-              case 4: case 5: if (oldstatus) stepper.ENABLE_EXTRUDER(2); else stepper.DISABLE_EXTRUDER(2); break;
-            #endif // E_STEPPERS > 2
-          #endif // E_STEPPERS > 1
-        }
-      #else // !SWITCHING_EXTRUDER
-        switch (active_extruder) {
-          #define _CASE_RESTORE(N) case N: if (oldstatus) stepper.ENABLE_EXTRUDER(N); else stepper.DISABLE_EXTRUDER(N); break;
-          REPEAT(E_STEPPERS, _CASE_RESTORE);
-        }
-      #endif // !SWITCHING_EXTRUDER
+      if (e_off) stepper.DISABLE_EXTRUDER(e_stepper);
 
       gcode.reset_stepper_timeout(ms);
     }
@@ -752,6 +734,10 @@ inline void manage_inactivity(const bool no_stepper_sleep=false) {
     }
   #endif
 }
+
+#if ALL(EP_BABYSTEPPING, EMERGENCY_PARSER)
+  #include "feature/babystep.h"
+#endif
 
 /**
  * Standard idle routine keeps the machine alive:
@@ -801,7 +787,7 @@ void idle(const bool no_stepper_sleep/*=false*/) {
   if (marlin_state == MF_INITIALIZING) goto IDLE_DONE;
 
   // TODO: Still causing errors
-  (void)check_tool_sensor_stats(active_extruder, true);
+  TERN_(TOOL_SENSOR, (void)check_tool_sensor_stats(active_extruder, true));
 
   // Handle filament runout sensors
   #if HAS_FILAMENT_SENSOR
@@ -842,7 +828,7 @@ void idle(const bool no_stepper_sleep/*=false*/) {
   TERN_(HAS_BEEPER, buzzer.tick());
 
   // Handle UI input / draw events
-  TERN(DWIN_CREALITY_LCD, DWIN_Update(), ui.update());
+  ui.update();
 
   // Run i2c Position Encoders
   #if ENABLED(I2C_POSITION_ENCODERS)
@@ -875,14 +861,23 @@ void idle(const bool no_stepper_sleep/*=false*/) {
   // Handle Joystick jogging
   TERN_(POLL_JOG, joystick.inject_jog_moves());
 
+  // Async Babystepping via the Emergency Parser
+  #if ALL(EP_BABYSTEPPING, EMERGENCY_PARSER)
+    babystep.do_ep_steps();
+  #endif
+
   // Direct Stepping
   TERN_(DIRECT_STEPPING, page_manager.write_responses());
 
   // Update the LVGL interface
   TERN_(HAS_TFT_LVGL_UI, LV_TASK_HANDLER());
 
+  // Manage Fixed-time Motion Control
+  TERN_(FT_MOTION, ftMotion.loop());
+
   IDLE_DONE:
   TERN_(MARLIN_DEV_MODE, idle_depth--);
+
   return;
 }
 
@@ -896,7 +891,7 @@ void kill(FSTR_P const lcd_error/*=nullptr*/, FSTR_P const lcd_component/*=nullp
   TERN_(HAS_CUTTER, cutter.kill()); // Full cutter shutdown including ISR control
 
   // Echo the LCD message to serial for extra context
-  if (lcd_error) { SERIAL_ECHO_START(); SERIAL_ECHOLNF(lcd_error); }
+  if (lcd_error) { SERIAL_ECHO_START(); SERIAL_ECHOLN(lcd_error); }
 
   #if HAS_DISPLAY
     ui.kill_screen(lcd_error ?: GET_TEXT_F(MSG_KILLED), lcd_component ?: FPSTR(NUL_STR));
@@ -1153,7 +1148,7 @@ void setup() {
   #if ENABLED(MARLIN_DEV_MODE)
     auto log_current_ms = [&](PGM_P const msg) {
       SERIAL_ECHO_START();
-      SERIAL_CHAR('['); SERIAL_ECHO(millis()); SERIAL_ECHOPGM("] ");
+      TSS('[', millis(), F("] ")).echo();
       SERIAL_ECHOLNPGM_P(msg);
     };
     #define SETUP_LOG(M) log_current_ms(PSTR(M))
@@ -1234,6 +1229,12 @@ void setup() {
   #endif
   #if TEMP_SENSOR_IS_MAX_TC(1) || (TEMP_SENSOR_IS_MAX_TC(REDUNDANT) && REDUNDANT_TEMP_MATCH(SOURCE, E1))
     OUT_WRITE(TEMP_1_CS_PIN, HIGH);
+  #endif
+  #if TEMP_SENSOR_IS_MAX_TC(2) || (TEMP_SENSOR_IS_MAX_TC(REDUNDANT) && REDUNDANT_TEMP_MATCH(SOURCE, E2))
+    OUT_WRITE(TEMP_2_CS_PIN, HIGH);
+  #endif
+  #if TEMP_SENSOR_IS_MAX_TC(BED)
+    OUT_WRITE(TEMP_BED_CS_PIN, HIGH);
   #endif
 
   #if ENABLED(DUET_SMART_EFFECTOR) && PIN_EXISTS(SMART_EFFECTOR_MOD)
@@ -1353,7 +1354,7 @@ void setup() {
     SETUP_RUN(touchBt.init());
   #endif
 
-  TERN_(HAS_M206_COMMAND, current_position += home_offset); // Init current position based on home_offset
+  TERN_(HAS_HOME_OFFSET, current_position += home_offset); // Init current position based on home_offset
 
   sync_plan_position();               // Vital to init stepper/planner equivalent for current_position
 
@@ -1596,11 +1597,11 @@ void setup() {
     SERIAL_ECHO_TERNARY(err, "BL24CXX Check ", "failed", "succeeded", "!\n");
   #endif
 
-  #if HAS_DWIN_E3V2_BASIC
-    SETUP_RUN(DWIN_InitScreen());
+  #if ENABLED(DWIN_CREALITY_LCD)
+    SETUP_RUN(dwinInitScreen());
   #endif
 
-  #if HAS_SERVICE_INTERVALS && !HAS_DWIN_E3V2_BASIC
+  #if HAS_SERVICE_INTERVALS && DISABLED(DWIN_CREALITY_LCD)
     SETUP_RUN(ui.reset_status(true));  // Show service messages or keep current status
   #endif
 
@@ -1647,7 +1648,17 @@ void setup() {
     SETUP_RUN(bdl.init(I2C_BD_SDA_PIN, I2C_BD_SCL_PIN, I2C_BD_DELAY));
   #endif
 
+  #if ENABLED(FT_MOTION)
+    SETUP_RUN(ftMotion.init());
+  #endif
+
   marlin_state = MF_RUNNING;
+
+  #ifdef STARTUP_TUNE
+    // Play a short startup tune before continuing.
+    constexpr uint16_t tune[] = STARTUP_TUNE;
+    for (uint8_t i = 0; i < COUNT(tune) - 1; i += 2) BUZZ(tune[i + 1], tune[i]);
+  #endif
 
   SETUP_LOG("setup() completed.");
 

@@ -26,11 +26,17 @@
  * Conditionals set before pins.h and which depend on Configuration_adv.h.
  */
 
+#if ENABLED(MARLIN_SMALL_BUILD)
+  #undef EEPROM_CHITCHAT
+  #undef CAPABILITIES_REPORT
+  #define DISABLE_M503
+#endif
+
 #ifndef AXIS_RELATIVE_MODES
   #define AXIS_RELATIVE_MODES {}
 #endif
 
-#ifdef SWITCHING_NOZZLE_E1_SERVO_NR
+#if defined(SWITCHING_NOZZLE_E1_SERVO_NR) && DISABLED(MECHANICAL_SWITCHING_NOZZLE)
   #define SWITCHING_NOZZLE_TWO_SERVOS 1
 #endif
 
@@ -76,9 +82,14 @@
 #endif // !defined(NUM_SERVOS)
 
 // Convenience override for a BLTouch alone
-#if ENABLED(BLTOUCH) && NUM_SERVOS == 1
-  #undef SERVO_DELAY
-  #define SERVO_DELAY { 50 }
+#if ENABLED(BLTOUCH)
+  #ifdef BLTOUCH_HS_MODE
+    #define HAS_BLTOUCH_HS_MODE 1
+  #endif
+  #if NUM_SERVOS == 1
+    #undef SERVO_DELAY
+    #define SERVO_DELAY { 50 }
+  #endif
 #endif
 
 #if !HAS_BED_PROBE
@@ -92,41 +103,52 @@
 #if !HAS_X_AXIS
   //#define LCD_SHOW_E_TOTAL
   #define NO_WORKSPACE_OFFSETS
+  #define NO_HOME_OFFSETS
   #undef AUTOTEMP
   #undef CALIBRATION_MEASURE_LEFT
   #undef CALIBRATION_MEASURE_RIGHT
+  #undef CALIBRATION_MEASURE_XMAX
+  #undef CALIBRATION_MEASURE_XMIN
   #undef DISABLE_IDLE_X
   #undef INPUT_SHAPING_X
   #undef SAFE_BED_LEVELING_START_X
   #undef SHAPING_FREQ_X
+  #undef SHAPING_ZETA_X
   #undef STEALTHCHOP_X
-  #undef INVERT_X_STEP_PIN
 #endif
 
 #if !HAS_Y_AXIS
   #undef ARC_SUPPORT
   #undef CALIBRATION_MEASURE_BACK
   #undef CALIBRATION_MEASURE_FRONT
+  #undef CALIBRATION_MEASURE_YMAX
+  #undef CALIBRATION_MEASURE_YMIN
   #undef DISABLE_IDLE_Y
   #undef HOME_Y_BEFORE_X
   #undef INPUT_SHAPING_Y
   #undef QUICK_HOME
   #undef SAFE_BED_LEVELING_START_Y
   #undef SHAPING_FREQ_Y
+  #undef SHAPING_ZETA_Y
   #undef STEALTHCHOP_Y
-  #undef INVERT_Y_STEP_PIN
+  #undef STEP_STATE_Y
 #endif
 
 #if !HAS_Z_AXIS
+  #undef CALIBRATION_MEASURE_ZMAX
+  #undef CALIBRATION_MEASURE_ZMIN
   #undef CNC_WORKSPACE_PLANES
   #undef DISABLE_IDLE_Z
   #undef ENABLE_LEVELING_FADE_HEIGHT
   #undef HOME_Z_FIRST
   #undef HOMING_Z_WITH_PROBE
+  #undef INPUT_SHAPING_Z
   #undef NUM_Z_STEPPERS
   #undef SAFE_BED_LEVELING_START_Z
+  #undef SHAPING_FREQ_Z
+  #undef SHAPING_ZETA_Z
   #undef STEALTHCHOP_Z
-  #undef INVERT_Z_STEP_PIN
+  #undef STEP_STATE_Z
   #undef Z_IDLE_HEIGHT
   #undef Z_PROBE_SLED
   #undef Z_SAFE_HOMING
@@ -138,7 +160,7 @@
   #undef DISABLE_IDLE_I
   #undef SAFE_BED_LEVELING_START_I
   #undef STEALTHCHOP_I
-  #undef INVERT_I_STEP_PIN
+  #undef STEP_STATE_I
 #endif
 
 #if !HAS_J_AXIS
@@ -147,7 +169,7 @@
   #undef DISABLE_IDLE_J
   #undef SAFE_BED_LEVELING_START_J
   #undef STEALTHCHOP_J
-  #undef INVERT_J_STEP_PIN
+  #undef STEP_STATE_J
 #endif
 
 #if !HAS_K_AXIS
@@ -156,7 +178,7 @@
   #undef DISABLE_IDLE_K
   #undef SAFE_BED_LEVELING_START_K
   #undef STEALTHCHOP_K
-  #undef INVERT_K_STEP_PIN
+  #undef STEP_STATE_K
 #endif
 
 #if !HAS_U_AXIS
@@ -165,7 +187,7 @@
   #undef DISABLE_IDLE_U
   #undef SAFE_BED_LEVELING_START_U
   #undef STEALTHCHOP_U
-  #undef INVERT_U_STEP_PIN
+  #undef STEP_STATE_U
 #endif
 
 #if !HAS_V_AXIS
@@ -174,7 +196,7 @@
   #undef DISABLE_IDLE_V
   #undef SAFE_BED_LEVELING_START_V
   #undef STEALTHCHOP_V
-  #undef INVERT_V_STEP_PIN
+  #undef STEP_STATE_V
 #endif
 
 #if !HAS_W_AXIS
@@ -183,7 +205,7 @@
   #undef DISABLE_IDLE_W
   #undef SAFE_BED_LEVELING_START_W
   #undef STEALTHCHOP_W
-  #undef INVERT_W_STEP_PIN
+  #undef STEP_STATE_W
 #endif
 
 // Disallowed with no extruders
@@ -289,11 +311,6 @@
   #endif
 #endif
 
-// This flag indicates some kind of jerk storage is needed
-#if ANY(CLASSIC_JERK, IS_KINEMATIC)
-  #define HAS_CLASSIC_JERK 1
-#endif
-
 // Use Junction Deviation for motion if Jerk is disabled
 #if DISABLED(CLASSIC_JERK)
   #define HAS_JUNCTION_DEVIATION 1
@@ -309,26 +326,34 @@
   #define HAS_LINEAR_E_JERK 1
 #endif
 
+// Some displays can toggle Adaptive Step Smoothing.
+// The state is saved to EEPROM.
+// In future this may be added to a G-code such as M205 A.
+#if ALL(ADAPTIVE_STEP_SMOOTHING, DWIN_LCD_PROUI)
+  #define ADAPTIVE_STEP_SMOOTHING_TOGGLE
+#endif
+
 /**
  * Temperature Sensors; define what sensor(s) we have.
  */
 
 // Temperature sensor IDs
-#define HID_NONE    -128
-#define HID_REDUNDANT -6
-#define HID_BOARD     -5
-#define HID_COOLER    -4
-#define HID_PROBE     -3
-#define HID_CHAMBER   -2
-#define HID_BED       -1
-#define HID_E0         0
-#define HID_E1         1
-#define HID_E2         2
-#define HID_E3         3
-#define HID_E4         4
-#define HID_E5         5
-#define HID_E6         6
-#define HID_E7         7
+#define H_NONE    -128
+#define H_REDUNDANT -7
+#define H_SOC       -6
+#define H_BOARD     -5
+#define H_COOLER    -4
+#define H_PROBE     -3
+#define H_CHAMBER   -2
+#define H_BED       -1
+#define H_E0         0
+#define H_E1         1
+#define H_E2         2
+#define H_E3         3
+#define H_E4         4
+#define H_E5         5
+#define H_E6         6
+#define H_E7         7
 
 #define _SENSOR_IS(I,N) || (TEMP_SENSOR(N) == I)
 #define _E_SENSOR_IS(I,N) _SENSOR_IS(N,I)
@@ -341,7 +366,7 @@
 #endif
 
 #if TEMP_SENSOR_REDUNDANT
-  #define _HEATER_ID(M) HID_##M
+  #define _HEATER_ID(M) H_##M
   #define HEATER_ID(M)  _HEATER_ID(M)
   #define REDUNDANT_TEMP_MATCH(M,N) (HEATER_ID(TEMP_SENSOR_REDUNDANT_##M) == _HEATER_ID(N))
 #else
@@ -794,6 +819,10 @@
   #endif
 #endif
 
+#if HAS_MULTI_EXTRUDER || HAS_MULTI_HOTEND || HAS_PRUSA_MMU2 || (ENABLED(MIXING_EXTRUDER) && MIXING_VIRTUAL_TOOLS > 1)
+  #define HAS_TOOLCHANGE 1
+#endif
+
 #if ENABLED(MIXING_EXTRUDER) && (ENABLED(RETRACT_SYNC_MIXING) || ALL(FILAMENT_LOAD_UNLOAD_GCODES, FILAMENT_UNLOAD_ALL_EXTRUDERS))
   #define HAS_MIXER_SYNC_CHANNEL 1
 #endif
@@ -850,12 +879,38 @@
   #define HAS_ENCODER_ACTION 1
 #endif
 
+#if ENABLED(ENCODER_RATE_MULTIPLIER)
+  #ifndef ENCODER_5X_STEPS_PER_SEC
+    #define ENCODER_5X_STEPS_PER_SEC 0
+  #endif
+  #ifndef ENCODER_10X_STEPS_PER_SEC
+    #define ENCODER_10X_STEPS_PER_SEC 0
+  #endif
+  #ifndef ENCODER_100X_STEPS_PER_SEC
+    #define ENCODER_100X_STEPS_PER_SEC 0
+  #endif
+  #if !((HAS_MARLINUI_MENU || HAS_DWIN_E3V2) && (ENCODER_5X_STEPS_PER_SEC || ENCODER_10X_STEPS_PER_SEC || ENCODER_100X_STEPS_PER_SEC))
+    #undef ENCODER_RATE_MULTIPLIER
+    #undef ENCODER_5X_STEPS_PER_SEC
+    #undef ENCODER_10X_STEPS_PER_SEC
+    #undef ENCODER_100X_STEPS_PER_SEC
+  #endif
+#endif
+
 #if STATUS_MESSAGE_TIMEOUT_SEC > 0
   #define HAS_STATUS_MESSAGE_TIMEOUT 1
 #endif
 
 #if HAS_MEDIA && SD_PROCEDURE_DEPTH
   #define HAS_MEDIA_SUBCALLS 1
+#endif
+
+#if ANY(SHOW_ELAPSED_TIME, SHOW_REMAINING_TIME, SHOW_INTERACTION_TIME)
+  #define HAS_TIME_DISPLAY 1
+#endif
+
+#if ANY(SHOW_PROGRESS_PERCENT, HAS_TIME_DISPLAY) && !HAS_GRAPHICAL_TFT
+  #define HAS_EXTRA_PROGRESS 1
 #endif
 
 #if HAS_PRINT_PROGRESS && ANY(PRINT_PROGRESS_SHOW_DECIMALS, SHOW_REMAINING_TIME)
@@ -891,25 +946,31 @@
 #if ALL(HAS_RESUME_CONTINUE, PRINTER_EVENT_LEDS, HAS_MEDIA)
   #define HAS_LEDS_OFF_FLAG 1
 #endif
-#if DISPLAY_SLEEP_MINUTES || TOUCH_IDLE_SLEEP_MINS
+#ifdef DISPLAY_SLEEP_MINUTES
   #define HAS_DISPLAY_SLEEP 1
 #endif
-#if HAS_DISPLAY_SLEEP || LCD_BACKLIGHT_TIMEOUT_MINS
-  #define HAS_GCODE_M255 1
+#ifdef LCD_BACKLIGHT_TIMEOUT_MINS
+  #define HAS_BACKLIGHT_TIMEOUT 1
 #endif
 
 #if ANY(DIGIPOT_MCP4018, DIGIPOT_MCP4451)
   #define HAS_MOTOR_CURRENT_I2C 1
 #endif
 
-#if ENABLED(Z_STEPPER_AUTO_ALIGN)
-  #ifdef Z_STEPPER_ALIGN_STEPPER_XY
-    #define HAS_Z_STEPPER_ALIGN_STEPPER_XY 1
-    #undef Z_STEPPER_ALIGN_AMP
+#if ENABLED(DUAL_X_CARRIAGE)
+  #ifndef INVERT_X2_DIR
+    #define INVERT_X2_DIR INVERT_X_DIR
   #endif
-  #ifndef Z_STEPPER_ALIGN_AMP
-    #define Z_STEPPER_ALIGN_AMP 1.0
-  #endif
+#endif
+
+// X2 but not IDEX => Dual Synchronized X Steppers
+#if defined(X2_DRIVER_TYPE) && DISABLED(DUAL_X_CARRIAGE)
+  #define HAS_SYNCED_X_STEPPERS 1
+#endif
+
+// Y2 Stepper => Dual Synchronized Y Steppers
+#ifdef Y2_DRIVER_TYPE
+  #define HAS_SYNCED_Y_STEPPERS 1
 #endif
 
 // Multiple Z steppers
@@ -934,8 +995,15 @@
   #endif
 #endif
 
-#if defined(X2_DRIVER_TYPE) && DISABLED(DUAL_X_CARRIAGE)
-  #define HAS_DUAL_X_STEPPERS 1
+// Z Stepper Auto-align
+#if ENABLED(Z_STEPPER_AUTO_ALIGN)
+  #ifdef Z_STEPPER_ALIGN_STEPPER_XY
+    #define HAS_Z_STEPPER_ALIGN_STEPPER_XY 1
+    #undef Z_STEPPER_ALIGN_AMP
+  #endif
+  #ifndef Z_STEPPER_ALIGN_AMP
+    #define Z_STEPPER_ALIGN_AMP 1.0
+  #endif
 #endif
 
 //
@@ -1093,10 +1161,6 @@
   #define POLL_JOG
 #endif
 
-#if ENABLED(DUAL_X_CARRIAGE)
-  #define X2_HOME_TO_MAX 1
-#endif
-
 #ifndef HOMING_BUMP_MM
   #define HOMING_BUMP_MM { 0, 0, 0 }
 #endif
@@ -1124,7 +1188,7 @@
   #elif HAS_DRIVER(A4988)
     #define MINIMUM_STEPPER_POST_DIR_DELAY 200
   #elif HAS_TRINAMIC_CONFIG || HAS_TRINAMIC_STANDALONE
-    #define MINIMUM_STEPPER_POST_DIR_DELAY 60
+    #define MINIMUM_STEPPER_POST_DIR_DELAY 100
   #else
     #define MINIMUM_STEPPER_POST_DIR_DELAY 0   // Expect at least 10µS since one Stepper ISR must transpire
   #endif
@@ -1134,21 +1198,21 @@
   #define MINIMUM_STEPPER_PRE_DIR_DELAY MINIMUM_STEPPER_POST_DIR_DELAY
 #endif
 
-#ifndef MINIMUM_STEPPER_PULSE
+#ifndef MINIMUM_STEPPER_PULSE_NS
   #if HAS_DRIVER(TB6560)
-    #define MINIMUM_STEPPER_PULSE 30
+    #define MINIMUM_STEPPER_PULSE_NS 30000
   #elif HAS_DRIVER(TB6600)
-    #define MINIMUM_STEPPER_PULSE 3
+    #define MINIMUM_STEPPER_PULSE_NS 3000
   #elif HAS_DRIVER(DRV8825)
-    #define MINIMUM_STEPPER_PULSE 2
+    #define MINIMUM_STEPPER_PULSE_NS 2000
   #elif HAS_DRIVER(A4988) || HAS_DRIVER(A5984)
-    #define MINIMUM_STEPPER_PULSE 1
-  #elif HAS_TRINAMIC_CONFIG || HAS_TRINAMIC_STANDALONE
-    #define MINIMUM_STEPPER_PULSE 0
+    #define MINIMUM_STEPPER_PULSE_NS 1000
   #elif HAS_DRIVER(LV8729)
-    #define MINIMUM_STEPPER_PULSE 0
+    #define MINIMUM_STEPPER_PULSE_NS 500
+  #elif HAS_TRINAMIC_CONFIG || HAS_TRINAMIC_STANDALONE
+    #define MINIMUM_STEPPER_PULSE_NS 100
   #else
-    #define MINIMUM_STEPPER_PULSE 2
+    // Expecting MAXIMUM_STEPPER_RATE to be defined
   #endif
 #endif
 
@@ -1166,9 +1230,12 @@
   #elif HAS_TRINAMIC_CONFIG || HAS_TRINAMIC_STANDALONE
     #define MAXIMUM_STEPPER_RATE 5000000
   #else
-    #define MAXIMUM_STEPPER_RATE 250000
+    // Expecting MINIMUM_STEPPER_PULSE_NS to be defined
   #endif
 #endif
+
+// Test for edge stepping on any axis
+#define AXIS_HAS_DEDGE(A) (ENABLED(EDGE_STEPPING) && AXIS_IS_TMC(A))
 
 #if ENABLED(DIRECT_STEPPING)
   #ifndef STEPPER_PAGES
@@ -1216,11 +1283,6 @@
   #define NO_EEPROM_SELECTED 1
 #endif
 
-// Flag whether hex_print.cpp is used
-#if ANY(AUTO_BED_LEVELING_UBL, M100_FREE_MEMORY_WATCHER, DEBUG_GCODE_PARSER, TMC_DEBUG, MARLIN_DEV_MODE, DEBUG_CARDREADER, M20_TIMESTAMP_SUPPORT)
-  #define NEED_HEX_PRINT 1
-#endif
-
 // Flags for Case Light having a color property or a single pin
 #if ENABLED(CASE_LIGHT_ENABLE)
   #if ANY(CASE_LIGHT_USE_NEOPIXEL, CASE_LIGHT_USE_RGB_LED)
@@ -1251,15 +1313,14 @@
  * LCD_SERIAL_PORT must be defined ahead of HAL.h and
  * currently HAL.h must be included ahead of pins.h.
  */
-#ifndef LCD_SERIAL_PORT
-  #if HAS_DWIN_E3V2 || IS_DWIN_MARLINUI || HAS_DGUS_LCD
-    #if MB(BTT_SKR_MINI_E3_V1_0, BTT_SKR_MINI_E3_V1_2, BTT_SKR_MINI_E3_V2_0, BTT_SKR_MINI_E3_V3_0, BTT_SKR_E3_TURBO, BTT_OCTOPUS_V1_1)
-      #define LCD_SERIAL_PORT 1
-    #elif MB(CREALITY_V24S1_301, CREALITY_V24S1_301F4, CREALITY_V423, MKS_ROBIN)
-      #define LCD_SERIAL_PORT 2 // Creality Ender3S1, MKS Robin
-    #else
-      #define LCD_SERIAL_PORT 3 // Other boards
-    #endif
+#if LCD_IS_SERIAL_HOST && !defined(LCD_SERIAL_PORT)
+  #if MB(MKS_MONSTER8_V1, BTT_SKR_MINI_E3_V1_0, BTT_SKR_MINI_E3_V1_2, BTT_SKR_MINI_E3_V2_0, BTT_SKR_MINI_E3_V3_0, BTT_SKR_MINI_E3_V3_0_1, BTT_SKR_E3_TURBO, BTT_OCTOPUS_V1_1, BTT_SKR_V3_0, BTT_SKR_V3_0_EZ, AQUILA_V101)
+
+    #define LCD_SERIAL_PORT 1
+  #elif MB(CREALITY_V24S1_301, CREALITY_V24S1_301F4, CREALITY_F401RE, CREALITY_V423, CREALITY_CR4NTXXC10, MKS_ROBIN, PANOWIN_CUTLASS, KODAMA_BARDO)
+    #define LCD_SERIAL_PORT 2
+  #else
+    #define LCD_SERIAL_PORT 3
   #endif
   #ifdef LCD_SERIAL_PORT
     #define AUTO_ASSIGNED_LCD_SERIAL 1
@@ -1279,18 +1340,69 @@
   #define CANNOT_EMBED_CONFIGURATION defined(__AVR__)
 #endif
 
-// Fan Kickstart
-#if FAN_KICKSTART_TIME && !defined(FAN_KICKSTART_POWER)
-  #define FAN_KICKSTART_POWER 180
-#endif
-
-#if FAN_MIN_PWM == 0 && FAN_MAX_PWM == 255
-  #define CALC_FAN_SPEED(f) (f ?: FAN_OFF_PWM)
-#else
-  #define CALC_FAN_SPEED(f) (f ? map(f, 1, 255, FAN_MIN_PWM, FAN_MAX_PWM) : FAN_OFF_PWM)
-#endif
-
 // Input shaping
-#if ANY(INPUT_SHAPING_X, INPUT_SHAPING_Y)
+#if ANY(INPUT_SHAPING_X, INPUT_SHAPING_Y, INPUT_SHAPING_Z)
   #define HAS_ZV_SHAPING 1
+#endif
+
+// FT Motion unified window and batch size
+#if ALL(FT_MOTION, FTM_UNIFIED_BWS)
+  #define FTM_WINDOW_SIZE FTM_BW_SIZE
+  #define FTM_BATCH_SIZE  FTM_BW_SIZE
+#endif
+
+// Toolchange Event G-code
+#if !HAS_MULTI_EXTRUDER || !(defined(EVENT_GCODE_TOOLCHANGE_T0) || defined(EVENT_GCODE_TOOLCHANGE_T1) || defined(EVENT_GCODE_TOOLCHANGE_T2) || defined(EVENT_GCODE_TOOLCHANGE_T3) || defined(EVENT_GCODE_TOOLCHANGE_T4) || defined(EVENT_GCODE_TOOLCHANGE_T5) || defined(EVENT_GCODE_TOOLCHANGE_T6) || defined(EVENT_GCODE_TOOLCHANGE_T7))
+  #undef TC_GCODE_USE_GLOBAL_X
+  #undef TC_GCODE_USE_GLOBAL_Y
+  #undef TC_GCODE_USE_GLOBAL_Z
+#endif
+
+// TOOLCHANGE_MIGRATION_FEATURE - Clean up after sloppy auto config
+#if DISABLED(TOOLCHANGE_MIGRATION_FEATURE)
+  #undef MIGRATION_ZRAISE
+  #undef MIGRATION_FS_EXTRA_PRIME
+  #undef MIGRATION_FS_WIPE_RETRACT
+  #undef MIGRATION_FS_FAN_SPEED
+  #undef MIGRATION_FS_FAN_TIME
+  #undef TOOLCHANGE_MIGRATION_DO_PARK
+#endif
+// TOOLCHANGE_PARK - Clean up after sloppy auto config
+#if DISABLED(TOOLCHANGE_PARK)
+  #undef TOOLCHANGE_PARK_XY
+  #undef TOOLCHANGE_PARK_XY_FEEDRATE
+  #undef TOOLCHANGE_PARK_X_ONLY
+  #undef TOOLCHANGE_PARK_Y_ONLY
+  #undef TOOLCHANGE_MIGRATION_DO_PARK
+#endif
+
+// Multi-Stepping Limit
+#ifndef MULTISTEPPING_LIMIT
+  #define MULTISTEPPING_LIMIT 128
+  #define MULTISTEPPING_LIMIT_WARNING 1
+#endif
+
+// One redundant cooling fan by default
+#if defined(REDUNDANT_PART_COOLING_FAN) && !defined(NUM_REDUNDANT_FANS)
+  #define NUM_REDUNDANT_FANS 1
+#endif
+
+// Clean up if only mm units are used
+#if DISABLED(INCH_MODE_SUPPORT)
+  #undef MANUAL_MOVE_DISTANCE_IN
+#endif
+
+// Clean up if no rotational axes exist
+#if !HAS_ROTATIONAL_AXES
+  #undef MANUAL_MOVE_DISTANCE_DEG
+#endif
+
+// Power-Loss Recovery
+#if ENABLED(POWER_LOSS_RECOVERY)
+  #ifdef PLR_BED_THRESHOLD
+    #define HAS_PLR_BED_THRESHOLD 1
+  #endif
+  #if ANY(DWIN_CREALITY_LCD, DWIN_LCD_PROUI)
+    #define HAS_PLR_UI_FLAG 1   // recovery.ui_flag_resume
+  #endif
 #endif

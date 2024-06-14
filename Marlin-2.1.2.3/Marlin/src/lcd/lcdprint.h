@@ -38,11 +38,6 @@
 
   #include "e3v2/marlinui/marlinui_dwin.h"
 
-  #define LCD_PIXEL_WIDTH     DWIN_WIDTH
-  #define LCD_PIXEL_HEIGHT    DWIN_HEIGHT
-  #define LCD_WIDTH           ((LCD_PIXEL_WIDTH)  / (MENU_FONT_WIDTH))
-  #define LCD_HEIGHT          ((LCD_PIXEL_HEIGHT) / (MENU_LINE_HEIGHT))
-
   // The DWIN lcd_moveto function uses row / column, not pixels
   #define LCD_COL_X(col)    (col)
   #define LCD_ROW_Y(row)    (row)
@@ -203,6 +198,29 @@ inline int lcd_put_u8str_P(const lcd_uint_t col, const lcd_uint_t row, PGM_P con
 inline int lcd_put_u8str(FSTR_P const fstr) { return lcd_put_u8str_P(FTOP(fstr)); }
 inline int lcd_put_u8str(const lcd_uint_t col, const lcd_uint_t row, FSTR_P const fstr) {
   return lcd_put_u8str_P(col, row, FTOP(fstr));
+}
+
+/**
+ * @brief Expand a string with optional substitution
+ * @details Expand a string with optional substitutions:
+ *   $ : the clipped string given by fstr or cstr
+ *   { :  '0'....'10' for indexes 0 - 10
+ *   ~ :  '1'....'11' for indexes 0 - 10
+ *   * : 'E1'...'E11' for indexes 0 - 10 (By default. Uses LCD_FIRST_TOOL)
+ *   @ : an axis name such as XYZUVW, or E for an extruder
+ *
+ * @param *outstr The output destination buffer
+ * @param ptpl A ROM string (template)
+ * @param ind An index value to use for = ~ * substitution
+ * @param cstr An SRAM C-string to use for $ substitution
+ * @param fstr A ROM F-string to use for $ substitution
+ * @param maxlen The maximum size of the string (in pixels on GLCD)
+ * @return the output width (in pixels on GLCD)
+ */
+lcd_uint_t expand_u8str_P(char * const outstr, PGM_P const ptpl, const int8_t ind, const char *cstr=nullptr, FSTR_P const fstr=nullptr, const lcd_uint_t maxlen=LCD_WIDTH);
+
+inline lcd_uint_t expand_u8str(char * const outstr, FSTR_P const ftpl, const int8_t ind, const char *cstr=nullptr, FSTR_P const fstr=nullptr, const lcd_uint_t maxlen=LCD_WIDTH) {
+  return expand_u8str_P(outstr, FTOP(ftpl), ind, cstr, fstr, maxlen);
 }
 
 /**

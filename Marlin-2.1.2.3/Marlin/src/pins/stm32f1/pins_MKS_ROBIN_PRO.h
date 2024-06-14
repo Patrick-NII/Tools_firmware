@@ -42,6 +42,15 @@
 #define DISABLE_DEBUG
 
 //
+// Onboard I2C EEPROM
+//
+#define IIC_BL24CXX_EEPROM                // Use I2C EEPROM onboard IC (AT24C04C, Size 4K, PageSize 16B)
+#define MARLIN_EEPROM_SIZE                0x1000  // 4K
+#define IIC_EEPROM_SDA                      PB7
+#define IIC_EEPROM_SCL                      PB6
+#define EEPROM_DEVICE_ADDRESS             0xA0
+
+//
 // SPI
 //
 #define SPI_DEVICE                             2  // Maple
@@ -60,6 +69,13 @@
 #define Y_MAX_PIN                           PG8
 #define Z_MIN_PIN                           PA11
 #define Z_MAX_PIN                           PC4
+
+//
+// Probe enable
+//
+#if ENABLED(PROBE_ENABLE_DISABLE) && !defined(PROBE_ENABLE_PIN)
+  #define PROBE_ENABLE_PIN            SERVO0_PIN
+#endif
 
 //
 // Steppers
@@ -313,8 +329,6 @@
   #define TFT_RESET_PIN            LCD_RESET_PIN
   #define TFT_BACKLIGHT_PIN    LCD_BACKLIGHT_PIN
 
-  #define FSMC_DMA_DEV                      DMA2
-  #define FSMC_DMA_CHANNEL               DMA_CH5
   #define FSMC_CS_PIN                FSMC_19_PIN  // NE4
   #define FSMC_RS_PIN                FSMC_20_PIN  // A0
   #define LCD_USE_DMA_FSMC                        // Use DMA transfers to send data to the TFT
@@ -367,7 +381,7 @@
 
   #else // !ENDER2_STOCKDISPLAY && !MKS_MINI_12864
 
-    #define LCD_PINS_D4                     PF14
+    #define LCD_PINS_D4              EXP1_05_PIN
     #if IS_ULTIPANEL
       #define LCD_PINS_D5            EXP1_06_PIN
       #define LCD_PINS_D6            EXP1_07_PIN
@@ -397,4 +411,14 @@
   #define SPI_FLASH_SCK_PIN                 PB13
   #define SPI_FLASH_MISO_PIN                PB14
   #define SPI_FLASH_MOSI_PIN                PB15
+#endif
+
+//
+// MKS WIFI pins
+//
+#if ENABLED(MKS_WIFI_MODULE)
+  #define WIFI_RESET_PIN                    PA5
+  #define WIFI_SERIAL_PORT                     1  // USART1
+  #define WIFI_IO1_PIN                      PC7
+  #define WIFI_IO0_PIN                      -1    // N.C.
 #endif

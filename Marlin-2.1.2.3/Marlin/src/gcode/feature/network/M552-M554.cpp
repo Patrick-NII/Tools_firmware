@@ -63,8 +63,7 @@ void ip_report(const uint16_t cmd, FSTR_P const post, const IPAddress &ipo) {
     SERIAL_ECHO(ipo[i]);
     if (i < 3) SERIAL_CHAR('.');
   }
-  SERIAL_ECHOPGM(" ; ");
-  SERIAL_ECHOLNF(post);
+  SERIAL_ECHOLN(F(" ; "), post);
 }
 
 /**
@@ -98,6 +97,7 @@ void GcodeSuite::M552() {
 }
 
 void GcodeSuite::M552_report() {
+  TERN_(MARLIN_SMALL_BUILD, return);
   ip_report(552, F("ip address"), Ethernet.linkStatus() == LinkON ? Ethernet.localIP() : ethernet.ip);
 }
 
@@ -112,6 +112,7 @@ void GcodeSuite::M553() {
 }
 
 void GcodeSuite::M553_report() {
+  TERN_(MARLIN_SMALL_BUILD, return);
   ip_report(553, F("subnet mask"), Ethernet.linkStatus() == LinkON ? Ethernet.subnetMask() : ethernet.subnet);
 }
 
@@ -126,6 +127,7 @@ void GcodeSuite::M554() {
 }
 
 void GcodeSuite::M554_report() {
+  TERN_(MARLIN_SMALL_BUILD, return);
   ip_report(554, F("gateway"), Ethernet.linkStatus() == LinkON ? Ethernet.gatewayIP() : ethernet.gateway);
 }
 

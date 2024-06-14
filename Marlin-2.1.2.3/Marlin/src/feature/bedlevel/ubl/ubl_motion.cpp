@@ -375,7 +375,7 @@
 
     // Add hints to help optimize the move
     PlannerHints hints(SQRT(cart_xy_mm_2 + sq(total.z)) * inv_segments);       // Length of each segment
-    #if ENABLED(SCARA_FEEDRATE_SCALING)
+    #if ENABLED(FEEDRATE_SCALING)
       hints.inv_duration = scaled_fr_mm_s / hints.millimeters;
     #endif
 

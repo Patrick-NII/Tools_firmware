@@ -50,12 +50,17 @@
   #error "TFT_COLOR_UI, TFT_LVGL_UI and TFT_CLASSIC_UI are currently only supported on STM32H7, STM32F4 and STM32F1 hardware."
 #endif
 
+#if TEMP_SENSOR_SOC && defined(ATEMP) && TEMP_SOC_PIN != ATEMP
+  #error "TEMP_SENSOR_SOC requires 'TEMP_SOC_PIN ATEMP' on STM32."
+#endif
+
 /**
  * Check for common serial pin conflicts
  */
 #define _CHECK_SERIAL_PIN(N) (( \
-    BTN_EN1 == N || DOGLCD_CS == N || HEATER_BED_PIN == N || FAN0_PIN == N || \
-    SDIO_D2_PIN == N || SDIO_D3_PIN == N || SDIO_CK_PIN == N || SDIO_CMD_PIN == N \
+    BTN_EN1 == N || BTN_EN2 == N ||DOGLCD_CS == N || HEATER_BED_PIN == N || FAN0_PIN == N || \
+    SDIO_D2_PIN == N || SDIO_D3_PIN == N || SDIO_CK_PIN == N || SDIO_CMD_PIN == N || \
+    Y_STEP_PIN == N || Y_ENABLE_PIN == N || E0_ENABLE_PIN == N || POWER_LOSS_PIN == N \
   ))
 #define CHECK_SERIAL_PIN(T,N) defined(UART##N##_##T##_PIN) && _CHECK_SERIAL_PIN(UART##N##_##T##_PIN)
 #if SERIAL_IN_USE(1)

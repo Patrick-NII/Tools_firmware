@@ -132,6 +132,12 @@ public:
     static void autofile_cancel() { autofile_index = 0; }
   #endif
 
+  #if ENABLED(ONE_CLICK_PRINT)
+    static bool one_click_check();  // Check for the newest file and prompt to run it.
+    static void diveToNewestFile(MediaFile parent, uint32_t &compareDateTime, MediaFile &outdir, char * const outname);
+    static bool selectNewestFile();
+  #endif
+
   // Basic file ops
   static void openFileRead(const char * const path, const uint8_t subcall=0);
   static void openFileWrite(const char * const path);
@@ -142,6 +148,7 @@ public:
   static char* longest_filename() { return longFilename[0] ? longFilename : filename; }
   #if ENABLED(LONG_FILENAME_HOST_SUPPORT)
     static void printLongPath(char * const path);   // Used by M33
+    static void getLongPath(char * const pathLong, char * const pathShort); // Used by anycubic_vyper
   #endif
 
   // Working Directory for SD card menu

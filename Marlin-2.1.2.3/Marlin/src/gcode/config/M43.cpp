@@ -118,7 +118,7 @@ inline void toggle_pins() {
 
 inline void servo_probe_test() {
 
-  #if !(NUM_SERVOS > 0 && HAS_SERVO_0)
+  #if !HAS_SERVO_0
 
     SERIAL_ERROR_MSG("SERVO not set up.");
 
@@ -139,24 +139,15 @@ inline void servo_probe_test() {
     bool deploy_state = false, stow_state;
 
     #if ENABLED(Z_MIN_PROBE_USES_Z_MIN_ENDSTOP_PIN)
-
       #define PROBE_TEST_PIN Z_MIN_PIN
-      constexpr bool probe_inverting = Z_MIN_ENDSTOP_INVERTING;
-
-      SERIAL_ECHOLNPGM(". Probe Z_MIN_PIN: ", PROBE_TEST_PIN);
-      SERIAL_ECHOPGM(". Z_MIN_ENDSTOP_INVERTING: ");
-
+      #define _PROBE_PREF "Z_MIN"
     #else
-
       #define PROBE_TEST_PIN Z_MIN_PROBE_PIN
-      constexpr bool probe_inverting = Z_MIN_PROBE_ENDSTOP_INVERTING;
-
-      SERIAL_ECHOLNPGM(". Probe Z_MIN_PROBE_PIN: ", PROBE_TEST_PIN);
-      SERIAL_ECHOPGM(   ". Z_MIN_PROBE_ENDSTOP_INVERTING: ");
-
+      #define _PROBE_PREF "Z_MIN_PROBE"
     #endif
 
-    serialprint_truefalse(probe_inverting);
+    SERIAL_ECHOLNPGM(". Probe " _PROBE_PREF "_PIN: ", PROBE_TEST_PIN);
+    serial_ternary(F(". " _PROBE_PREF "_ENDSTOP_HIT_STATE: "), PROBE_HIT_STATE, F("HIGH"), F("LOW"));
     SERIAL_EOL();
 
     SET_INPUT_PULLUP(PROBE_TEST_PIN);
@@ -173,11 +164,11 @@ inline void servo_probe_test() {
       SERIAL_ECHOLNPGM(". Check for BLTOUCH");
       bltouch._reset();
       bltouch._stow();
-      if (probe_inverting == READ(PROBE_TEST_PIN)) {
+      if (!PROBE_TRIGGERED()) {
         bltouch._set_SW_mode();
-        if (probe_inverting != READ(PROBE_TEST_PIN)) {
+        if (PROBE_TRIGGERED()) {
           bltouch._deploy();
-          if (probe_inverting == READ(PROBE_TEST_PIN)) {
+          if (!PROBE_TRIGGERED()) {
             bltouch._stow();
             SERIAL_ECHOLNPGM("= BLTouch Classic 1.2, 1.3, Smart 1.0, 2.0, 2.2, 3.0, 3.1 detected.");
             // Check for a 3.1 by letting the user trigger it, later
@@ -205,7 +196,7 @@ inline void servo_probe_test() {
         stow_state = READ(PROBE_TEST_PIN);
       }
 
-      if (probe_inverting != deploy_state) SERIAL_ECHOLNPGM("WARNING: INVERTING setting probably backwards.");
+      if (PROBE_HIT_STATE == deploy_state) SERIAL_ECHOLNPGM("WARNING: " _PROBE_PREF "_ENDSTOP_HIT_STATE is probably wrong.");
 
       if (deploy_state != stow_state) {
         SERIAL_ECHOLNPGM("= Mechanical Switch detected");
@@ -301,9 +292,7 @@ void GcodeSuite::M43() {
   // 'E' Enable or disable endstop monitoring and return
   if (parser.seen('E')) {
     endstops.monitor_flag = parser.value_bool();
-    SERIAL_ECHOPGM("endstop monitor ");
-    SERIAL_ECHOF(endstops.monitor_flag ? F("en") : F("dis"));
-    SERIAL_ECHOLNPGM("abled");
+    SERIAL_ECHOLN(F("endstop monitor "), endstops.monitor_flag ? F("en") : F("dis"), F("abled"));
     return;
   }
 

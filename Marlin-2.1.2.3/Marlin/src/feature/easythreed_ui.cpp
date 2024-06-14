@@ -197,7 +197,7 @@ void EasythreedUI::printButton() {
             card.ls();                                              // List all files to serial output
             const int16_t filecnt = card.get_num_items();           // Count printable files in cwd
             if (filecnt == 0) return;                               // None are printable?
-            card.selectFileByIndex(filecnt);                        // Select the last file (without sort)
+            card.selectFileByIndex(filecnt);                        // Select the last file according to current sort options
             card.openAndPrintFile(card.filename);                   // Start printing it
           } break;
           case PF_PAUSE: {                                          // Pause printing (not currently firing)

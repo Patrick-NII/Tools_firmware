@@ -38,6 +38,8 @@
   #error "Thermal Runaway Protection for hotends is now enabled with THERMAL_PROTECTION_HOTENDS."
 #elif DISABLED(THERMAL_PROTECTION_BED) && defined(THERMAL_PROTECTION_BED_PERIOD)
   #error "Thermal Runaway Protection for the bed is now enabled with THERMAL_PROTECTION_BED."
+#elif defined(NO_FAN_SLOWING_IN_PID_TUNING)
+  #error "NO_FAN_SLOWING_IN_PID_TUNING is now TEMP_TUNING_MAINTAIN_FAN."
 #elif (CORE_IS_XZ || CORE_IS_YZ) && ENABLED(Z_LATE_ENABLE)
   #error "Z_LATE_ENABLE can't be used with COREXZ, COREZX, COREYZ, or COREZY."
 #elif defined(X_HOME_RETRACT_MM)
@@ -63,7 +65,7 @@
 #elif defined(ENDSTOPPULLUP_FIL_RUNOUT)
   #error "ENDSTOPPULLUP_FIL_RUNOUT is now FIL_RUNOUT_PULLUP."
 #elif defined(DISABLE_MAX_ENDSTOPS) || defined(DISABLE_MIN_ENDSTOPS)
-  #error "DISABLE_MAX_ENDSTOPS and DISABLE_MIN_ENDSTOPS deprecated. Use individual USE_*_PLUG options instead."
+  #error "DISABLE_MAX_ENDSTOPS and DISABLE_MIN_ENDSTOPS deprecated. Endstops are automatically determined."
 #elif defined(LANGUAGE_INCLUDE)
   #error "LANGUAGE_INCLUDE has been replaced by LCD_LANGUAGE."
 #elif defined(EXTRUDER_OFFSET_X) || defined(EXTRUDER_OFFSET_Y)
@@ -80,6 +82,8 @@
   #error "Z_ENDSTOP_SERVO_NR is now Z_PROBE_SERVO_NR."
 #elif defined(DEFAULT_XYJERK)
   #error "DEFAULT_XYJERK is deprecated. Use DEFAULT_XJERK and DEFAULT_YJERK instead."
+#elif defined(ALLOW_LOW_EJERK)
+  #error "ALLOW_LOW_EJERK is deprecated and should be removed."
 #elif defined(XY_TRAVEL_SPEED)
   #error "XY_TRAVEL_SPEED is now XY_PROBE_FEEDRATE."
 #elif defined(XY_PROBE_SPEED)
@@ -153,9 +157,11 @@
 #elif defined(PID_ADD_EXTRUSION_RATE)
   #error "PID_ADD_EXTRUSION_RATE is now PID_EXTRUSION_SCALING and is DISABLED by default."
 #elif defined(Z_RAISE_BEFORE_HOMING)
-  #error "Z_RAISE_BEFORE_HOMING is now Z_HOMING_HEIGHT."
+  #error "Z_RAISE_BEFORE_HOMING is now Z_CLEARANCE_FOR_HOMING."
 #elif defined(MIN_Z_HEIGHT_FOR_HOMING)
-  #error "MIN_Z_HEIGHT_FOR_HOMING is now Z_HOMING_HEIGHT."
+  #error "MIN_Z_HEIGHT_FOR_HOMING is now Z_CLEARANCE_FOR_HOMING."
+#elif defined(Z_HOMING_HEIGHT)
+  #error "Z_HOMING_HEIGHT is now Z_CLEARANCE_FOR_HOMING."
 #elif defined(Z_RAISE_BEFORE_PROBING) || defined(Z_RAISE_AFTER_PROBING)
   #error "Z_RAISE_(BEFORE|AFTER)_PROBING are deprecated. Use Z_CLEARANCE_DEPLOY_PROBE and Z_AFTER_PROBING instead."
 #elif defined(Z_RAISE_PROBE_DEPLOY_STOW) || defined(Z_RAISE_BETWEEN_PROBINGS)
@@ -214,8 +220,6 @@
   #error "LCD_PIN_RESET is now LCD_RESET_PIN."
 #elif defined(EXTRUDER_0_AUTO_FAN_PIN) || defined(EXTRUDER_1_AUTO_FAN_PIN) || defined(EXTRUDER_2_AUTO_FAN_PIN) || defined(EXTRUDER_3_AUTO_FAN_PIN)
   #error "EXTRUDER_[0123]_AUTO_FAN_PIN is now E[0123]_AUTO_FAN_PIN."
-#elif defined(PID_FAN_SCALING) && !HAS_FAN
-  #error "PID_FAN_SCALING needs at least one fan enabled."
 #elif defined(min_software_endstops) || defined(max_software_endstops)
   #error "(min|max)_software_endstops are now (MIN|MAX)_SOFTWARE_ENDSTOPS."
 #elif ENABLED(Z_PROBE_SLED) && defined(SLED_PIN)
@@ -281,11 +285,11 @@
 #elif defined(MEASURED_LOWER_LIMIT) || defined(MEASURED_UPPER_LIMIT)
   #error "MEASURED_(UPPER|LOWER)_LIMIT is now FILWIDTH_ERROR_MARGIN."
 #elif defined(HAVE_TMCDRIVER)
-  #error "HAVE_TMCDRIVER is now [AXIS]_DRIVER_TYPE TMC26X."
+  #error "HAVE_TMCDRIVER is obsolete."
 #elif defined(STEALTHCHOP)
   #error "STEALTHCHOP is now STEALTHCHOP_(XY|Z|E)."
 #elif defined(HAVE_TMC26X)
-  #error "HAVE_TMC26X is now [AXIS]_DRIVER_TYPE TMC26X."
+  #error "HAVE_TMC26X is now obsolete."
 #elif defined(HAVE_TMC2130)
   #error "HAVE_TMC2130 is now [AXIS]_DRIVER_TYPE TMC2130."
 #elif defined(HAVE_TMC2208)
@@ -294,10 +298,10 @@
   #error "HAVE_L6470DRIVER is obsolete. L64xx stepper drivers are no longer supported in Marlin."
 #elif defined(X_IS_TMC) || defined(X2_IS_TMC) || defined(Y_IS_TMC) || defined(Y2_IS_TMC) || defined(Z_IS_TMC) || defined(Z2_IS_TMC) || defined(Z3_IS_TMC) \
    || defined(E0_IS_TMC) || defined(E1_IS_TMC) || defined(E2_IS_TMC) || defined(E3_IS_TMC) || defined(E4_IS_TMC) || defined(E5_IS_TMC) || defined(E6_IS_TMC) || defined(E7_IS_TMC)
-  #error "[AXIS]_IS_TMC is now [AXIS]_DRIVER_TYPE TMC26X."
+  #error "[AXIS]_IS_TMC is now obsolete."
 #elif defined(X_IS_TMC26X) || defined(X2_IS_TMC26X) || defined(Y_IS_TMC26X) || defined(Y2_IS_TMC26X) || defined(Z_IS_TMC26X) || defined(Z2_IS_TMC26X) || defined(Z3_IS_TMC26X) \
    || defined(E0_IS_TMC26X) || defined(E1_IS_TMC26X) || defined(E2_IS_TMC26X) || defined(E3_IS_TMC26X) || defined(E4_IS_TMC26X) || defined(E5_IS_TMC26X) || defined(E6_IS_TMC26X) || defined(E7_IS_TMC26X)
-  #error "[AXIS]_IS_TMC26X is now [AXIS]_DRIVER_TYPE TMC26X."
+  #error "[AXIS]_IS_TMC26X is now obsolete."
 #elif defined(X_IS_TMC2130) || defined(X2_IS_TMC2130) || defined(Y_IS_TMC2130) || defined(Y2_IS_TMC2130) || defined(Z_IS_TMC2130) || defined(Z2_IS_TMC2130) || defined(Z3_IS_TMC2130) \
    || defined(E0_IS_TMC2130) || defined(E1_IS_TMC2130) || defined(E2_IS_TMC2130) || defined(E3_IS_TMC2130) || defined(E4_IS_TMC2130) || defined(E5_IS_TMC2130) || defined(E6_IS_TMC2130) || defined(E7_IS_TMC2130)
   #error "[AXIS]_IS_TMC2130 is now [AXIS]_DRIVER_TYPE TMC2130."
@@ -577,6 +581,18 @@
   #error "Y_DUAL_STEPPER_DRIVERS is no longer needed and should be removed."
 #elif defined(NUM_Z_STEPPER_DRIVERS)
   #error "NUM_Z_STEPPER_DRIVERS is no longer needed and should be removed."
+#elif defined(SNMM)
+  #error "SNMM is obsolete. Define MMU_MODEL as PRUSA_MMU1 instead."
+#elif defined(MK2_MULTIPLEXER)
+  #error "MK2_MULTIPLEXER is obsolete. Define MMU_MODEL as PRUSA_MMU1 instead."
+#elif defined(PRUSA_MMU2)
+  #error "PRUSA_MMU2 is obsolete. Define MMU_MODEL as PRUSA_MMU2 instead."
+#elif defined(PRUSA_MMU2_S_MODE)
+  #error "PRUSA_MMU2_S_MODE is obsolete. Define MMU_MODEL as PRUSA_MMU2S instead."
+#elif defined(SMUFF_EMU_MMU2)
+  #error "SMUFF_EMU_MMU2 is obsolete. Define MMU_MODEL as EXTENDABLE_EMU_MMU2 instead."
+#elif defined(SMUFF_EMU_MMU2S)
+  #error "SMUFF_EMU_MMU2S is obsolete. Define MMU_MODEL as EXTENDABLE_EMU_MMU2S instead."
 #elif defined(LEVEL_BED_CORNERS)
   #error "LEVEL_BED_CORNERS is now LCD_BED_TRAMMING."
 #elif defined(LEVEL_CORNERS_INSET_LFRB) || defined(LEVEL_CORNERS_HEIGHT) || defined(LEVEL_CORNERS_Z_HOP) || defined(LEVEL_CORNERS_USE_PROBE) || defined(LEVEL_CORNERS_PROBE_TOLERANCE) || defined(LEVEL_CORNERS_VERIFY_RAISED) || defined(LEVEL_CORNERS_AUDIO_FEEDBACK)
@@ -584,7 +600,9 @@
 #elif defined(LEVEL_CENTER_TOO)
   #error "LEVEL_CENTER_TOO is now BED_TRAMMING_INCLUDE_CENTER."
 #elif defined(TOUCH_IDLE_SLEEP)
-  #error "TOUCH_IDLE_SLEEP (seconds) is now TOUCH_IDLE_SLEEP_MINS (minutes)."
+  #error "TOUCH_IDLE_SLEEP (seconds) is now DISPLAY_SLEEP_MINUTES (minutes)."
+#elif defined(TOUCH_IDLE_SLEEP_MINS)
+  #error "TOUCH_IDLE_SLEEP_MINS is now DISPLAY_SLEEP_MINUTES."
 #elif defined(LCD_BACKLIGHT_TIMEOUT)
   #error "LCD_BACKLIGHT_TIMEOUT (seconds) is now LCD_BACKLIGHT_TIMEOUT_MINS (minutes)."
 #elif defined(LCD_SET_PROGRESS_MANUALLY)
@@ -599,12 +617,42 @@
   #error "EXTRA_LIN_ADVANCE_K is now ADVANCE_K_EXTRA."
 #elif defined(POLAR_SEGMENTS_PER_SECOND) || defined(DELTA_SEGMENTS_PER_SECOND)  || defined(SCARA_SEGMENTS_PER_SECOND) || defined(TPARA_SEGMENTS_PER_SECOND)
   #error "(POLAR|DELTA|SCARA|TPARA)_SEGMENTS_PER_SECOND is now DEFAULT_SEGMENTS_PER_SECOND."
+#elif defined(TMC_SW_MOSI) || defined(TMC_SW_MISO) || defined(TMC_SW_SCK)
+  #error "TMC_SW_(MOSI|MISO|SCK) is now TMC_SPI_(MOSI|MISO|SCK)."
+#elif ANY(DGUS_LCD_UI_ORIGIN, DGUS_LCD_UI_FYSETC, DGUS_LCD_UI_HIPRECY, DGUS_LCD_UI_MKS, DGUS_LCD_UI_RELOADED) && !defined(DGUS_LCD_UI)
+  #error "DGUS_LCD_UI_[TYPE] is now set using DGUS_LCD_UI TYPE."
+#elif defined(DELTA_PRINTABLE_RADIUS)
+  #error "DELTA_PRINTABLE_RADIUS is now PRINTABLE_RADIUS."
+#elif defined(SCARA_PRINTABLE_RADIUS)
+  #error "SCARA_PRINTABLE_RADIUS is now PRINTABLE_RADIUS."
+#elif defined(SCARA_FEEDRATE_SCALING)
+  #error "SCARA_FEEDRATE_SCALING is now FEEDRATE_SCALING."
+#elif defined(MILLISECONDS_PREHEAT_TIME)
+  #error "MILLISECONDS_PREHEAT_TIME is now PREHEAT_TIME_HOTEND_MS."
 #elif defined(EXPERIMENTAL_SCURVE)
   #error "EXPERIMENTAL_SCURVE is no longer needed and should be removed."
+#elif defined(BABYSTEP_ZPROBE_GFX_OVERLAY)
+  #error "BABYSTEP_ZPROBE_GFX_OVERLAY is now BABYSTEP_GFX_OVERLAY."
 #elif defined(DISABLE_INACTIVE_EXTRUDER)
   #error "DISABLE_INACTIVE_EXTRUDER is now DISABLE_OTHER_EXTRUDERS."
+#elif defined(INVERT_X_STEP_PIN) || defined(INVERT_Y_STEP_PIN) || defined(INVERT_Z_STEP_PIN) || defined(INVERT_I_STEP_PIN) || defined(INVERT_J_STEP_PIN) || defined(INVERT_K_STEP_PIN) || defined(INVERT_U_STEP_PIN) || defined(INVERT_V_STEP_PIN) || defined(INVERT_W_STEP_PIN) || defined(INVERT_E_STEP_PIN)
+  #error "INVERT_*_STEP_PIN true is now STEP_STATE_* LOW, and INVERT_*_STEP_PIN false is now STEP_STATE_* HIGH."
+#elif defined(PROBE_PT_1_X) || defined(PROBE_PT_1_Y) || defined(PROBE_PT_2_X) || defined(PROBE_PT_2_Y) || defined(PROBE_PT_3_X) || defined(PROBE_PT_3_Y)
+  #error "PROBE_PT_[123]_[XY] is now defined using PROBE_PT_[123] with an array { x, y }."
+#elif defined(SQUARE_WAVE_STEPPING)
+  #error "SQUARE_WAVE_STEPPING is now EDGE_STEPPING."
+#elif defined(MINIMUM_STEPPER_PULSE)
+  #error "MINIMUM_STEPPER_PULSE (in µs) is now MINIMUM_STEPPER_PULSE_NS. Multiply old MINIMUM_STEPPER_PULSE x 1000!"
 #elif defined(FAN_PIN)
   #error "FAN_PIN is now FAN0_PIN."
+#elif defined(X_MIN_ENDSTOP_INVERTING) || defined(Y_MIN_ENDSTOP_INVERTING) || defined(Z_MIN_ENDSTOP_INVERTING) \
+   || defined(I_MIN_ENDSTOP_INVERTING) || defined(J_MIN_ENDSTOP_INVERTING) || defined(K_MIN_ENDSTOP_INVERTING) \
+   || defined(U_MIN_ENDSTOP_INVERTING) || defined(V_MIN_ENDSTOP_INVERTING) || defined(W_MIN_ENDSTOP_INVERTING) \
+   || defined(X_MAX_ENDSTOP_INVERTING) || defined(Y_MAX_ENDSTOP_INVERTING) || defined(Z_MAX_ENDSTOP_INVERTING) \
+   || defined(I_MAX_ENDSTOP_INVERTING) || defined(J_MAX_ENDSTOP_INVERTING) || defined(K_MAX_ENDSTOP_INVERTING) \
+   || defined(U_MAX_ENDSTOP_INVERTING) || defined(V_MAX_ENDSTOP_INVERTING) || defined(W_MAX_ENDSTOP_INVERTING) \
+   || defined(Z_MIN_PROBE_ENDSTOP_INVERTING)
+  #error "*_ENDSTOP_INVERTING false/true is now set with *_ENDSTOP_HIT_STATE HIGH/LOW."
 #elif defined(DISABLE_INACTIVE_X) || defined(DISABLE_INACTIVE_Y) || defined(DISABLE_INACTIVE_Z) \
    || defined(DISABLE_INACTIVE_I) || defined(DISABLE_INACTIVE_J) || defined(DISABLE_INACTIVE_K) \
    || defined(DISABLE_INACTIVE_U) || defined(DISABLE_INACTIVE_V) || defined(DISABLE_INACTIVE_W) || defined(DISABLE_INACTIVE_E)
@@ -615,19 +663,67 @@
   #error "TFT_SHARED_SPI is now TFT_SHARED_IO."
 #elif defined(LCD_PINS_ENABLE)
   #error "LCD_PINS_ENABLE is now LCD_PINS_EN."
+#elif ANY(USE_XMIN_PLUG, USE_XMAX_PLUG, USE_YMIN_PLUG, USE_YMAX_PLUG, USE_ZMIN_PLUG, USE_ZMAX_PLUG, \
+          USE_IMIN_PLUG, USE_IMAX_PLUG, USE_JMIN_PLUG, USE_JMAX_PLUG, USE_KMIN_PLUG, USE_KMAX_PLUG, \
+          USE_UMIN_PLUG, USE_UMAX_PLUG, USE_VMIN_PLUG, USE_VMAX_PLUG, USE_WMIN_PLUG, USE_WMAX_PLUG)
+  #error "USE_*_PLUG settings are no longer needed and should be removed."
+#elif defined(X2_USE_ENDSTOP)
+  #error "X2_USE_ENDSTOP is obsolete. Instead set X2_STOP_PIN directly. (e.g., 'X2_USE_ENDSTOP _XMAX_' becomes 'X2_STOP_PIN X_MAX_PIN')"
+#elif defined(Y2_USE_ENDSTOP)
+  #error "Y2_USE_ENDSTOP is obsolete. Instead set Y2_STOP_PIN directly. (e.g., 'Y2_USE_ENDSTOP _YMAX_' becomes 'Y2_STOP_PIN Y_MAX_PIN')"
+#elif defined(Z2_USE_ENDSTOP)
+  #error "Z2_USE_ENDSTOP is obsolete. Instead set Z2_STOP_PIN directly. (e.g., 'Z2_USE_ENDSTOP _ZMAX_' becomes 'Z2_STOP_PIN Z_MAX_PIN')"
+#elif defined(Z3_USE_ENDSTOP)
+  #error "Z3_USE_ENDSTOP is obsolete. Instead set Z2_STOP_PIN directly. (e.g., 'Z3_USE_ENDSTOP _ZMAX_' becomes 'Z3_STOP_PIN Z_MAX_PIN')"
+#elif defined(Z4_USE_ENDSTOP)
+  #error "Z4_USE_ENDSTOP is obsolete. Instead set Z4_STOP_PIN directly. (e.g., 'Z4_USE_ENDSTOP _ZMAX_' becomes 'Z4_STOP_PIN Z_MAX_PIN')"
+#elif defined(INTEGRATED_BABYSTEPPING)
+  #error "INTEGRATED_BABYSTEPPING is no longer needed and should be removed."
 #elif defined(FOLDER_SORTING)
   #error "FOLDER_SORTING is now SDSORT_FOLDERS."
 #elif defined(BTT_MINI_12864_V1)
   #error "BTT_MINI_12864_V1 is now BTT_MINI_12864."
+#elif defined(Z_PROBE_OFFSET_RANGE_MIN) || defined(Z_PROBE_OFFSET_RANGE_MAX)
+  #error "Z_PROBE_OFFSET_RANGE_(MIN|MAX) is now PROBE_OFFSET_Z(MIN|MAX)."
+#elif defined(LARGE_MOVE_ITEMS)
+  #error "LARGE_MOVE_ITEMS is obsolete. Instead define MANUAL_MOVE_DISTANCE_MM and MANUAL_MOVE_DISTANCE_IN."
 #elif defined(SDIO_SUPPORT)
   #error "SDIO_SUPPORT is now ONBOARD_SDIO."
+#elif defined(ANET_FULL_GRAPHICS_LCD_ALT_WIRING)
+  #error "ANET_FULL_GRAPHICS_LCD_ALT_WIRING is now CTC_A10S_A13."
+#elif defined(Z_PROBE_END_SCRIPT)
+  #error "Z_PROBE_END_SCRIPT is now EVENT_GCODE_AFTER_G29."
+#elif defined(WIFI_SERIAL)
+  #error "WIFI_SERIAL is now WIFI_SERIAL_PORT."
 #endif
+
+// Changes to Probe Temp Compensation (#17392)
+#if HAS_PTC && TEMP_SENSOR_PROBE && TEMP_SENSOR_BED
+  #if defined(PTC_PARK_POS_X) || defined(PTC_PARK_POS_Y) || defined(PTC_PARK_POS_Z)
+    #error "PTC_PARK_POS_[XYZ] is now PTC_PARK_POS (array)."
+  #elif defined(PTC_PROBE_POS_X) || defined(PTC_PROBE_POS_Y)
+    #error "PTC_PROBE_POS_[XY] is now PTC_PROBE_POS (array)."
+  #endif
+#endif
+
+// Consolidate TMC26X, validate migration (#24373)
+#define _ISMAX_1(A) defined(A##_MAX_CURRENT)
+#define _ISSNS_1(A) defined(A##_SENSE_RESISTOR)
+#if DO(ISMAX,||,ALL_AXIS_NAMES)
+  #error "*_MAX_CURRENT is now set with *_CURRENT."
+#elif DO(ISSNS,||,ALL_AXIS_NAMES)
+  #error "*_SENSE_RESISTOR (in Milli-Ohms) is now set with *_RSENSE (in Ohms), so you must divide values by 1000."
+#endif
+#undef _ISMAX_1
+#undef _ISSNS_1
 
 // L64xx stepper drivers have been removed
 #define _L6470              0x6470
 #define _L6474              0x6474
 #define _L6480              0x6480
 #define _POWERSTEP01        0xF00D
+#define _TMC26X             0x2600
+#define _TMC26X_STANDALONE  0x2601
 #if HAS_DRIVER(L6470)
   #error "L6470 stepper drivers are no longer supported in Marlin."
 #elif HAS_DRIVER(L6474)
@@ -636,8 +732,12 @@
   #error "L6480 stepper drivers are no longer supported in Marlin."
 #elif HAS_DRIVER(POWERSTEP01)
   #error "POWERSTEP01 stepper drivers are no longer supported in Marlin."
+#elif HAS_DRIVER(TMC26X) || HAS_DRIVER(TMC26X_STANDALONE)
+  #error "TMC26X stepper drivers are no longer supported in Marlin."
 #endif
 #undef _L6470
 #undef _L6474
 #undef _L6480
 #undef _POWERSTEP01
+#undef _TMC26X
+#undef _TMC26X_STANDALONE
